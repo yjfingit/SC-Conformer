@@ -1,0 +1,18 @@
+\begin{tabular}{lrr}
+\toprule
+Method & Params & train/fold (s) \\
+\midrule
+EEGNet & 2.1K & 35 \\
+ShallowConvNet & 10.8K & 14 \\
+DeepConvNet & 268.2K & 14 \\
+EEG-Conformer & 759.1K & 48 \\
+ATCNet & 98.6K & 82 \\
+\method{} w/o \scn{} & 969.3K & 67 \\
+\method{} w/ sin-pos & 999.6K & 95 \\
+\method{} w/ 1-scale stem & 996.4K & 136 \\
+\method{} w/o adaLN & 970.0K & 324 \\
+\method{} w/o SSM & 943.8K & 75 \\
+\method{}-S & 369.6K & 72 \\
+\method{} & 999.6K & 82 \\
+\bottomrule
+\end{tabular}

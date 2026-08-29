@@ -49,7 +49,7 @@ def fmt(rs, m):
 
 
 def main_table(rows, root):
-    os.makedirs(os.path.join(root, "tables"), exist_ok=True)
+    os.makedirs(os.path.join(root, "paper", "tables"), exist_ok=True)
     datasets = ["bnci_2a", "bnci_2b", "seed", "seed4"]
     # keep models having data in >=1 dataset; custom ordering
     models = [m for m in ORDER if any((d, m) in rows for d in datasets)]
@@ -69,7 +69,7 @@ def main_table(rows, root):
                 cells.append("--")
         lines.append(f"{LATEX_NAMES.get(m, m)} & " + " & ".join(cells) + " \\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
-    with open(os.path.join(root, "tables", "main.tex"), "w") as f:
+    with open(os.path.join(root, "paper", "tables", "main.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
     return models, means
 
@@ -88,7 +88,7 @@ def ablation_table(rows, root):
             cells.append(fmt(rs, "bacc") if rs else "--")
         lines.append(f"{LATEX_NAMES.get(m, m)} & " + " & ".join(cells) + " \\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
-    with open(os.path.join(root, "tables", "ablation.tex"), "w") as f:
+    with open(os.path.join(root, "paper", "tables", "ablation.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
 
 
@@ -105,7 +105,7 @@ def cost_table(rows, root):
             p, t = seen[m]
             lines.append(f"{LATEX_NAMES.get(m, m)} & {p/1e3:.1f}K & {t:.0f} \\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
-    with open(os.path.join(root, "tables", "cost.tex"), "w") as f:
+    with open(os.path.join(root, "paper", "tables", "cost.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
 
 
