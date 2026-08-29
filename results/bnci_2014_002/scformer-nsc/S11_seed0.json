@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2014_002",
+ "model": "scformer-nsc",
+ "test_subject": 11,
+ "seed": 0,
+ "n_params": 969730,
+ "train_time": 76.90386486053467,
+ "epochs_run": 17,
+ "val_bacc": 0.5416666666666667,
+ "acc": 0.73125,
+ "bacc": 0.73125,
+ "kappa": 0.46249999999907493
+}
