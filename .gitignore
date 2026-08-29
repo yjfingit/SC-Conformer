@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+data/
+third_party/
+*.npz
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+.DS_Store
