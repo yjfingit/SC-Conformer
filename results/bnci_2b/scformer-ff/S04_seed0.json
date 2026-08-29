@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2b",
+ "model": "scformer-ff",
+ "test_subject": 4,
+ "seed": 0,
+ "n_params": 970018,
+ "train_time": 110.41765880584717,
+ "epochs_run": 13,
+ "val_bacc": 0.5739030023094689,
+ "acc": 0.6067567567567568,
+ "bacc": 0.6067567567567568,
+ "kappa": 0.21351351351308653
+}

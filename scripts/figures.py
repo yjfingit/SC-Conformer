@@ -59,7 +59,7 @@ def per_subject_box():
         r = json.load(open(path))
         rows.setdefault(r["model"], {}).setdefault(
             (r["dataset"], r["test_subject"]), []).append(r["bacc"] * 100)
-    datasets = ["bnci_2a", "bnci_2b", "bnci_2014_002", "seed"]
+    datasets = ["bnci_2a", "bnci_2b", "seed", "seed4"]
     models = ["eegnet", "conformer", "atcnet", "scformer"]
     fig, axes = plt.subplots(1, len(datasets), figsize=(11, 2.2),
                              sharey=False)

@@ -28,24 +28,25 @@ brain--computer interfaces (BCIs): each unseen subject constitutes its own
 distribution, and no labels---or even a subject identity---are available at
 test time. We present \method{}, an architecture that makes cross-subject
 generalization an explicit design target rather than an afterthought.
-\method{} transplants components that are proven in speech and vision---a
-multi-scale temporal convolution stem, Conformer blocks with rotary position
-embeddings, and a lightweight bidirectional input-gated SSM branch---and adds
-a novel Statistics-Conditioned conditioning mechanism (\scn{}): robust
+Our premise is that the quantities that drift across subjects are
+\emph{measurable statistics of the signal itself}, and that a decoder should
+condition on them at every level of the pipeline. \method{} therefore
+combines (i) a compact backbone that transplants components proven in speech
+and vision---a multi-scale temporal convolution stem, Conformer blocks with
+rotary position embeddings, and a lightweight bidirectional input-gated SSM
+branch; (ii) a novel Statistics-Conditioned mechanism (\scn{}): robust
 per-channel deviation statistics (medians, MADs, band-power ratios) computed
-on the fly from each test trial are injected both as dedicated tokens in the
-encoder and as per-block adaptive LayerNorm modulations, so the network
-learns, at training time, how to re-normalize itself for an unseen subject.
-At test time we further apply Subject-Adaptive Normalization (\san{}), which
-re-estimates batch-normalization statistics from the unlabeled test stream.
-Optionally, the encoder is pretrained with masked patch reconstruction on the
-pooled training subjects. Under a strict leave-one-subject-out protocol in
-which every baseline is re-run in one identical pipeline, \method{} achieves
-the best average accuracy across four standard benchmarks (BCI-IV~2a, 2b,
-BNCI-2014-002 and SEED) while using two orders of magnitude fewer parameters
-and one third of the training cost of a fine-tuned EEG foundation model.
-Ablations isolate the contribution of each transplanted component and show
-that statistics conditioning is the main driver of cross-subject gains.
+on the fly from each test trial are injected as dedicated encoder tokens and
+as per-block adaptive LayerNorm modulations, so the network learns, at
+training time, how to re-normalize itself for an unseen subject; and (iii)
+label-free subject-space alignment, which whitens each subject's trials by
+their own covariance statistics. Under a strict leave-one-subject-out
+protocol in which every baseline is re-run in one identical pipeline across
+four standard benchmarks (motor imagery: BCI-IV 2a/2b; emotion: SEED and
+SEED-IV), \method{} attains the best average balanced accuracy while using
+two orders of magnitude fewer parameters and a fraction of the training cost
+of a fine-tuned EEG foundation model. Ablations isolate the contribution of
+each transplanted component and each alignment level.
 \end{abstract}
 
 \section{Introduction}
