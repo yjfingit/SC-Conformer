@@ -8,24 +8,36 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn.modules.batchnorm import _BatchNorm
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.datasets import dataset_subjects, make_loso  # noqa: E402
 from src.models import build  # noqa: E402
+from src.pretrain_ssl import pretrain as ssl_pretrain  # noqa: E402
 from src.utils import balanced_accuracy, kappa, seed_all  # noqa: E402
 
 
+AUG_RECIPES = {
+    "strong": dict(jitter=20, noise=0.15, scale=0.1, ch_drop=0.15, t_mask=0.1),
+    "light": dict(jitter=20, noise=0.1),
+    "none": dict(),
+}
+
+
 def run_fold(ds, model_name, test_subj, seed=0, epochs=40, batch=64,
-             lr=None, wd=1e-4, amp=True, patience=8, workers=4, device="cuda"):
+             lr=None, wd=1e-4, amp=True, patience=8, workers=2, device="cuda",
+             aug="strong", smooth=0.1, adabn=True, ssl=False):
     seed_all(seed)
     torch.backends.cudnn.benchmark = True
-    tr, va, te = make_loso(ds, test_subj, seed=seed)
+    tr, va, te = make_loso(ds, test_subj, seed=seed, aug=AUG_RECIPES[aug])
     model, lr0 = build(model_name, n_ch=tr.X.shape[1],
                        n_times=tr.X.shape[2], n_classes=int(tr.y.max()) + 1)
     lr = lr or lr0
     model = model.to(device).float()
+    if ssl and model_name.startswith("scformer"):
+        model = ssl_pretrain(model, ds, test_subj, seed=seed, device=device)
     n_params = sum(p.numel() for p in model.parameters())
 
     dl_tr = DataLoader(tr, batch, shuffle=True, num_workers=workers,
@@ -37,7 +49,7 @@ def run_fold(ds, model_name, test_subj, seed=0, epochs=40, batch=64,
     n_steps = epochs * len(dl_tr)
     sched = torch.optim.lr_scheduler.OneCycleLR(
         opt, max_lr=lr, total_steps=n_steps, pct_start=0.15)
-    lossf = nn.CrossEntropyLoss(label_smoothing=0.1)
+    lossf = nn.CrossEntropyLoss(label_smoothing=smooth)
     scaler = torch.amp.GradScaler(enabled=amp)
 
     best_va, best_state, bad = -1.0, None, 0
@@ -73,6 +85,19 @@ def run_fold(ds, model_name, test_subj, seed=0, epochs=40, batch=64,
 
     if best_state is not None:
         model.load_state_dict(best_state)
+    if adabn:
+        # Subject-adaptive normalization: re-estimate BN running stats on
+        # the unlabeled test stream of the target subject (no labels used).
+        bns = [m for m in model.modules() if isinstance(m, _BatchNorm)]
+        if bns:
+            for m in bns:
+                m.reset_running_stats()
+                m.momentum = None      # cumulative average
+            model.train()
+            with torch.no_grad():
+                for _ in range(2):     # two passes over test stream
+                    for x, _ in dl_te:
+                        model(x.to(device))
     model.eval()
     ys, ps = [], []
     with torch.no_grad(), torch.autocast("cuda", torch.bfloat16, enabled=amp):
@@ -98,6 +123,12 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--batch", type=int, default=64)
+    ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--aug", default="strong", choices=list(AUG_RECIPES))
+    ap.add_argument("--smooth", type=float, default=0.1)
+    ap.add_argument("--patience", type=int, default=8)
+    ap.add_argument("--adabn", type=int, default=1)
+    ap.add_argument("--ssl", type=int, default=0)
     ap.add_argument("--out", default="/root/autodl-tmp/ICLR/results")
     args = ap.parse_args()
 
@@ -105,7 +136,9 @@ def main():
     todo = [args.subject] if args.subject is not None else subjects
     for s in todo:
         r = run_fold(args.dataset, args.model, s, seed=args.seed,
-                     epochs=args.epochs, batch=args.batch)
+                     epochs=args.epochs, batch=args.batch, workers=args.workers,
+                     aug=args.aug, smooth=args.smooth, patience=args.patience,
+                     adabn=bool(args.adabn), ssl=bool(args.ssl))
         d = os.path.join(args.out, args.dataset, args.model)
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, f"S{s:02d}_seed{args.seed}.json")

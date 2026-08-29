@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2a",
+ "model": "deep4",
+ "test_subject": 6,
+ "seed": 0,
+ "n_params": 282879,
+ "train_time": 45.95427227020264,
+ "epochs_run": 28,
+ "val_bacc": 0.34883720930232565,
+ "acc": 0.2708333333333333,
+ "bacc": 0.2708333333333333,
+ "kappa": 0.027777777777740716
+}

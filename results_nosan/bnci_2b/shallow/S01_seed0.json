@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2b",
+ "model": "shallow",
+ "test_subject": 1,
+ "seed": 0,
+ "n_params": 10802,
+ "train_time": 86.96595072746277,
+ "epochs_run": 40,
+ "val_bacc": 0.667816091954023,
+ "acc": 0.5527777777777778,
+ "bacc": 0.5527777777777778,
+ "kappa": 0.10555555555534452
+}

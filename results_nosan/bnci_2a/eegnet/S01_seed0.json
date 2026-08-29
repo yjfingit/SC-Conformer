@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2a",
+ "model": "eegnet",
+ "test_subject": 1,
+ "seed": 0,
+ "n_params": 3444,
+ "train_time": 38.778191566467285,
+ "epochs_run": 21,
+ "val_bacc": 0.3793604651162791,
+ "acc": 0.4288194444444444,
+ "bacc": 0.4288194444444444,
+ "kappa": 0.238425925925608
+}

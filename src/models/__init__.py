@@ -4,6 +4,7 @@ from braindecode.models import (Deep4Net, EEGConformer, EEGNetv4,
                                 ShallowFBCSPNet)
 
 from .atcnet import ATCNet
+from .foundation import CbraModFT, CbraModLinear
 from .scformer import SCFormer
 
 _SCFORMER_VARIANTS = {
@@ -20,6 +21,11 @@ _SCFORMER_VARIANTS = {
                           use_rope=True,  use_ms_stem=False),
     "scformer-sin":  dict(use_sc=True,  use_film=True,  use_ssm=True,
                           use_rope=False, use_ms_stem=True),
+    # v2: smaller capacity, stronger dropout (cross-subject regime)
+    "scformer-v2":   dict(use_sc=True,  use_film=True,  use_ssm=True,
+                          use_rope=True,  use_ms_stem=True,
+                          d_model=64, depth=3, ff=128, heads=4,
+                          dropout=0.4),
 }
 
 
@@ -43,4 +49,10 @@ def build(name, n_ch, n_times, n_classes, sfreq=250):
     if name in _SCFORMER_VARIANTS:
         m = SCFormer(**kw, **_SCFORMER_VARIANTS[name])
         return m, 2e-3
+    if name == "cbramod":
+        return CbraModFT(n_ch=n_ch, n_times=n_times,
+                         n_classes=n_classes), 1e-4
+    if name == "cbramod-lp":
+        return CbraModLinear(n_ch=n_ch, n_times=n_times,
+                             n_classes=n_classes), 1e-3
     raise ValueError(name)
