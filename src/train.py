@@ -127,7 +127,7 @@ def main():
     ap.add_argument("--aug", default="strong", choices=list(AUG_RECIPES))
     ap.add_argument("--smooth", type=float, default=0.1)
     ap.add_argument("--patience", type=int, default=8)
-    ap.add_argument("--adabn", type=int, default=1)
+    ap.add_argument("--adabn", type=int, default=0)
     ap.add_argument("--ssl", type=int, default=0)
     ap.add_argument("--out", default="/root/autodl-tmp/ICLR/results")
     args = ap.parse_args()

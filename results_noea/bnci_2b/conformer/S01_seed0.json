@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2b",
+ "model": "conformer",
+ "test_subject": 1,
+ "seed": 0,
+ "n_params": 759106,
+ "train_time": 135.65973830223083,
+ "epochs_run": 32,
+ "val_bacc": 0.5758620689655173,
+ "acc": 0.5763888888888888,
+ "bacc": 0.5763888888888888,
+ "kappa": 0.15277777777747212
+}

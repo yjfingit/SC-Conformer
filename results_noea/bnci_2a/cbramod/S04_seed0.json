@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2a",
+ "model": "cbramod",
+ "test_subject": 4,
+ "seed": 0,
+ "n_params": 4884604,
+ "train_time": 135.37116837501526,
+ "epochs_run": 20,
+ "val_bacc": 0.32558139534883723,
+ "acc": 0.28125,
+ "bacc": 0.28125,
+ "kappa": 0.04166666666661111
+}

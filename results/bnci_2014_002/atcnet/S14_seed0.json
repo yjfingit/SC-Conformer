@@ -4,10 +4,10 @@
  "test_subject": 14,
  "seed": 0,
  "n_params": 98994,
- "train_time": 41.0118682384491,
- "epochs_run": 14,
- "val_bacc": 0.5897435897435898,
- "acc": 0.5,
- "bacc": 0.5,
- "kappa": 0.0
+ "train_time": 43.96255683898926,
+ "epochs_run": 32,
+ "val_bacc": 0.6634615384615385,
+ "acc": 0.5375,
+ "bacc": 0.5375,
+ "kappa": 0.07499999999984996
 }

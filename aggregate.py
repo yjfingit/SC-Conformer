@@ -26,7 +26,7 @@ LATEX_NAMES = {
     "scformer": r"\method{}",
 }
 DATASET_LATEX = {"bnci_2a": "BCI-IV 2a", "bnci_2b": "BCI-IV 2b",
-                 "bnci_2014_002": "BNCI-2014-002", "seed": "SEED"}
+                 "seed": "SEED", "seed4": "SEED-IV"}
 ORDER = ["eegnet", "shallow", "deep4", "conformer", "atcnet", "cbramod",
          "scformer-nsc", "scformer-sin", "scformer-ms", "scformer-ff",
          "scformer+nf", "scformer-v2", "scformer"]
@@ -50,7 +50,7 @@ def fmt(rs, m):
 
 def main_table(rows, root):
     os.makedirs(os.path.join(root, "tables"), exist_ok=True)
-    datasets = ["bnci_2a", "bnci_2b", "bnci_2014_002", "seed"]
+    datasets = ["bnci_2a", "bnci_2b", "seed", "seed4"]
     # keep models having data in >=1 dataset; custom ordering
     models = [m for m in ORDER if any((d, m) in rows for d in datasets)]
     models += sorted({m for (_, m) in rows if m not in ORDER})
@@ -75,7 +75,7 @@ def main_table(rows, root):
 
 
 def ablation_table(rows, root):
-    datasets = ["bnci_2a", "bnci_2b", "bnci_2014_002", "seed"]
+    datasets = ["bnci_2a", "bnci_2b", "seed", "seed4"]
     ablations = ["scformer", "scformer+nf", "scformer-ff", "scformer-nsc",
                  "scformer-ms", "scformer-sin", "scformer-v2"]
     lines = ["\\begin{tabular}{l" + "c" * len(datasets) + "}", "\\toprule",

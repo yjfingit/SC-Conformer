@@ -241,16 +241,31 @@ and its weights seed supervised fine-tuning.
 \section{Experiments}
 \label{sec:experiments}
 
-\paragraph{Protocol.} Four benchmarks: BCI-IV~2a (9 subjects, 4 classes,
-22 ch), BCI-IV~2b (9, 2, 3), BNCI-2014-002 (14, 2, 15), SEED (15, 3, 62).
-All datasets pass through one pipeline (MOABB loading, 4--40\,Hz band-pass
-for MI datasets / 1--45\,Hz for SEED, resampling to 250\,Hz, 4-s epochs,
-dataset-level robust normalization). Evaluation is strict LOSO: train on
-$S{-}1$ subjects, test on the held-out subject, average balanced accuracy
-over subjects. Every method uses identical epochs (40), AdamW, OneCycle
-schedule, early stopping on a validation split of the \emph{training}
-subjects, and \san{}. We report mean$\pm$std over subjects; per-fold results
-are released.
+\paragraph{Protocol.} Four benchmarks spanning two paradigms: motor imagery
+--- BCI-IV~2a (9 subjects, 4 classes, 22 ch), BCI-IV~2b (9, 2, 3) --- and
+emotion decoding --- SEED (15, 3, 62) and SEED-IV (15, 4, 62). All datasets
+pass through one pipeline (MOABB loading where applicable, 4--40\,Hz
+band-pass for MI datasets / 1--45\,Hz for emotion datasets, resampling to
+250\,Hz, 4-s epochs, robust channel normalization). Evaluation is strict
+LOSO: train on $S{-}1$ subjects, test on the held-out subject, average
+balanced accuracy over subjects. Every method uses identical budgets
+(40 epochs for MI, 20 for emotion datasets), AdamW, a OneCycle schedule,
+early stopping on a validation split of the \emph{training} subjects, and
+\emph{subject-space alignment} (below). We report mean$\pm$std over
+subjects; per-fold results are released.
+
+\paragraph{Subject-space alignment.} Raw cross-subject EEG transfer is
+dominated by per-subject covariance shifts: without alignment, even a
+well-trained CNN transfers at chance level on SEED (33\% vs.\ a 48\%
+within-subject ceiling). We therefore adopt Euclidean alignment
+\citep{he2020ea} as a uniform protocol component: each subject's trials are
+whitened by the inverse square root of that subject's mean covariance,
+computed from the subject's \emph{unlabeled} trials (transductive,
+label-free, milliseconds of compute). Alignment is applied identically to
+every compared method. Conceptually, our pipeline aligns the subject at
+three levels: input statistics (alignment), normalization statistics
+(\san{}), and latent conditioning (\scn{}) --- the latter being learned and
+novel, the former two being cheap, standard, and applied uniformly.
 
 \paragraph{Baselines.} EEGNet \citep{lawhern2018eegnet}, ShallowFBCSP and
 Deep4 \citep{schirrmeister2017deep}, EEG-Conformer \citep{song2022eeg},

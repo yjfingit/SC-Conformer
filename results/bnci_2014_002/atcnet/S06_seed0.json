@@ -4,7 +4,7 @@
  "test_subject": 6,
  "seed": 0,
  "n_params": 98994,
- "train_time": 28.539190769195557,
+ "train_time": 112.19243025779724,
  "epochs_run": 10,
  "val_bacc": 0.5032051282051282,
  "acc": 0.5,

@@ -1,0 +1,13 @@
+{
+ "dataset": "seed",
+ "model": "eegnet",
+ "test_subject": 4,
+ "seed": 0,
+ "n_params": 3587,
+ "train_time": 256.3494873046875,
+ "epochs_run": 9,
+ "val_bacc": 0.3333333333333333,
+ "acc": 0.32977038796516234,
+ "bacc": 0.3287605204032093,
+ "kappa": -0.006508563230067657
+}

@@ -4,9 +4,9 @@
  "test_subject": 13,
  "seed": 0,
  "n_params": 778306,
- "train_time": 96.26916837692261,
- "epochs_run": 24,
- "val_bacc": 0.5352564102564102,
+ "train_time": 523.3755128383636,
+ "epochs_run": 37,
+ "val_bacc": 0.5512820512820513,
  "acc": 0.5,
  "bacc": 0.5,
  "kappa": 0.0
