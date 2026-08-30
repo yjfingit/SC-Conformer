@@ -1,0 +1,1906 @@
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+1
+
+EmT: A Novel Transformer for Generalized
+Cross-subject EEG Emotion Recognition
+
+arXiv:2406.18345v3 [cs.LG] 17 Mar 2025
+
+Yi Ding, Member, IEEE, Chengxuan Tong, Graduate Student Member, IEEE, Shuailei Zhang, Muyun Jiang,
+Yong Li, Kevin Lim Jun Liang, and Cuntai Guan, Fellow, IEEE
+
+Abstract—Integrating prior knowledge of neurophysiology into
+neural network architecture enhances the performance of emotion decoding. While numerous techniques emphasize learning
+spatial and short-term temporal patterns, there has been limited
+emphasis on capturing the vital long-term contextual information
+associated with emotional cognitive processes. In order to address
+this discrepancy, we introduce a novel transformer model called
+emotion transformer (EmT). EmT is designed to excel in both
+generalized cross-subject EEG emotion classification and regression tasks. In EmT, EEG signals are transformed into a temporal
+graph format, creating a sequence of EEG feature graphs using
+a temporal graph construction module (TGC). A novel residual
+multi-view pyramid GCN module (RMPG) is then proposed to
+learn dynamic graph representations for each EEG feature graph
+within the series, and the learned representations of each graph
+are fused into one token. Furthermore, we design a temporal
+contextual transformer module (TCT) with two types of token
+mixers to learn the temporal contextual information. Finally, the
+task-specific output module (TSO) generates the desired outputs.
+Experiments on four publicly available datasets show that EmT
+achieves higher results than the baseline methods for both EEG
+emotion classification and regression tasks. The code is available
+at https://github.com/yi-ding-cs/EmT.
+Index Terms—Deep learning, electroencephalography, graph
+neural networks, transformer.
+
+I. I NTRODUCTION
+
+E
+
+MOTION recognition using electroencephalography
+(EEG) plays an important role in brain-computer interface (BCI) assisted mental disorder regulation. It requires machine to perceive human emotional states from brain activities
+using artificial intelligence techniques [1], [2]. The predictions
+of emotions can be used for neurofeedback in the regulation
+process [3]. Accurate predictions and fair generalization abilities to unseen subjects are crucial in building robust real-world
+BCI systems. Deep learning methods have shown promising
+results for accurate detection of brain activities [4], [5]. The
+design of the neural network architecture becomes crucial.
+Yi Ding and Chengxuan Tong contribute equally to this work.
+Yi Ding, Chengxuan Tong, Shuailei Zhang, Muyun Jiang, and Cuntai Guan
+are with the College of Computing and Data Science, Nanyang Technological University, 50 Nanyang Avenue, Singapore, 639798. E-mail: (ding.yi,
+tong0110, shuailei.zhang, james.jiang, ctguan)@ntu.edu.sg.
+Chengxuan Tong and Jun Liang Kevin Lim are with Wilmar International,
+Singapore. E-mail: (chengxuan.tong, kevin.limjunliang)@sg.wilmar-intl.com.
+Yong Li is with the School of Computer Science and Engineering and the
+Key Laboratory of New Generation Artificial Intelligence Technology and Its
+Interdisciplinary Applications, Southeast University, Nanjing 210096, China.
+Email: mysee1989@gmail.com
+Cuntai Guan is the Corresponding Author.
+
+Incorporating neurophysiological prior knowledge into neural network architectures improves emotion decoding performance [6], [7], [8]. Common considerations include leftright hemisphere asymmetries, neurophysiologically meaningful graph connections, and the temporal dynamics of EEG
+signals. According to neuropsychological studies, the left and
+right hemispheres react differently to emotions, particularly in
+the frontal areas [9]. Several deep learning methods [8], [10],
+[11] draw inspiration from this prior knowledge, achieving
+improved emotion decoding performance. EEG electrodes are
+placed on the scalp, which naturally forms a non-Euclidean
+structure. Therefore, many studies treat EEG signals as graphs,
+using either a neurophysiologically designed adjacency matrix
+[7] or a learnable one [12], [13]. However, there is still more
+prior knowledge that should be investigated. As one of the
+high-order cognitive processes in the brain, emotion consists
+of more basic processes such as attentional, perceptual, and
+mnemonic system processes [14]. Different brain regions are
+cooperatively activated under different cognitive processes,
+e.g., frontal and parietal networks in attention [15] and medial
+temporal lobes, prefrontal cortex, and parietal cortex interactions for episodic memory [16]. Using a pre-defined or a single
+learnable adjacency matrix cannot capture complex brain
+region connectives underlying emotional processes. Another
+prior knowledge about emotions is that emotional states are
+continuous in short periods while not consistent along the long
+stimuli [17]. Less attention is paid to this temporal contextual
+information underlying emotions.
+To address the above-mentioned problems, we propose a
+novel transformer-based structure, named emotion transformer
+(EmT), for both generalized cross-subject emotion classification and regression tasks. To the best of our knowledge,
+this is the first work to explore transformer-based structures
+on cross-subject EEG emotion classification and regression
+tasks together. To learn temporal contextual information, we
+represent EEG segments as temporal graphs, as shown in
+Figure 2. We learn the spatial information of each EEG
+graph to form a token. Then the long-short time contextual
+information is learned upon the token sequence.
+We propose a residual multi-view pyramid graph convolutional neural networks (GCN) module, named RMPG, to
+capture multiple EEG channel connections for different basic
+cognitive processes in emotions. Multiple GCNs with independent learnable adjacency matrices are utilized parallelly
+in RMPG. Different from [18] that uses multiple adjacency
+matrices among manually defined local groups, we learn
+the connections among all the EEG channels. The reasons
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+are two-fold: 1) locally defined groups are special cases of
+a global connection in which the EEG channels are fully
+connected within each local group, and 2) more specific
+channel-wise connections can be learned. Those parallel GCNs
+have different numbers of layers that can learn multi-view and
+multi-level graph embeddings with the help of their learnable
+adjacency matrices. Together with the output of a residual
+linear projection branch, a feature pyramid is formed. A mean
+fusion is utilized to combine the information in the feature
+pyramid as one token. Hence, a temporal sequence of tokens
+is formed.
+We further propose temporal contextual transformers (TCT)
+with different token mixers [19] to learn contextual information from the token sequence for EEG emotion classification
+and regression tasks. An EEG trial refers to the period when
+one type of stimuli, e.g., a happy movie clip, is presented to the
+subject while the EEG is recorded. The label of the entire trial
+is assigned as happy according to either the self-assessments
+or the stimulus contents in classification tasks. However, the
+emotional states of the subjects change along with the stimuli
+[17]. Cutting each trial into short segments and assigning the
+same label to them will induce noisy labels [7]. To relieve
+noisy label issues and learn temporal contextual information
+of emotions, we can use a longer sliding window with shortshifting steps to split each trial, and the longer segments are
+further cut into sub-segments. Multi-head self-attention (MSA)
+in transformers [20] can attentively emphasis the parts that
+are highly correlated to the overall emotional state of the
+longer EEG segment. Because emotion is continuous [21],
+the underlying state is consistent in a short period. Hence,
+we propose a short-time aggregation (STA) layer after MSA
+to learn the long-short-time contextual information. Different
+from classification tasks, the label is temporally continuous in
+regression tasks. The model needs to regress the continuous
+changes of the emotional states for all the segments within
+a sequence. Although MSA can globally emphasis important
+parts in the sequence, recurrent neural networks (RNN) can
+further fuse the information of all the segments recurrently.
+This causal information fusion ability makes RNN more
+suitable for regression task. Hence, we propose to use an RNNbased token mixer in TCT for the regression tasks instead of
+MSA. To this end, we propose TCT-Clas and TCT-Regr as
+the token mixers in EmT for EEG emotion classification and
+regression tasks.
+The major contribution of this work can be summarised as:
+• We propose a novel Emotion Transformer (EmT) for
+generalized cross-subject EEG emotion classification and
+regression tasks.
+• We introduce a residual multi-view pyramid GCN
+(RMPG) module, designed to learn multi-view and multilevel graph embeddings using multiple learnable adjacency matrices. This approach incorporates neuroscience
+knowledge, recognizing that emotions are composed of
+various basic cognitive processes.
+• Two types of temporal contextual transformer (TCT)
+blocks with task-specific token mixers are proposed to
+capture temporal contextual information from EEG data,
+accounting for the differing learning objectives between
+
+2
+
+•
+
+classification and regression tasks.
+Extensive experiments are conducted to evaluate and analyze the proposed EmT on four public datasets. Shanghai
+Jiao Tong University emotion EEG dataset (SEED) [22],
+the TsingHua University emotional profile dataset (THUEP) [23] and the finer-grained affective computing EEG
+dataset (FACED) [24] are used for classification tasks
+while the multimodal database for affect recognition and
+implicit tagging dataset (MAHNOB-HCI) [25] is utilized
+for regression tasks. The results demonstrate the superior
+of EmT over the compared baseline methods.
+II. R ELATED W ORK
+
+A. Graph Neural Networks
+Graph neural networks (GNN) are used for non-Euclidean
+graph-structure data. Spectral GNN is a category of GNN
+that often rely on expensive eigendecomposition of the graph
+laplacian, thus several methods use approximation approaches
+to perform spectral filtering. ChebyNet [26] uses Chebyshev
+polynomials to approximate the spectral filters. Cayley polynomials are utilized to compute spectral filters for targeted frequency bands, which are localized in space and scale linearly
+with input data for sparse graphs [27]. The graph convolutional
+network (GCN) approximates spectral filtering with localized
+first-order aggregation [28]. EEG signals naturally have a
+graph structure. While some methods use GNN/GCN to extract
+spatial information from EEG signals, several approaches [7],
+[12], [13] do not consider the interactions among multiple
+brain areas involved in high-level cognitive processes, relying instead on a single adjacency matrix. Additionally, most
+of these methods [7], [12], [13], [18] neglect the temporal
+contextual information associated with emotional processes,
+using averaged features as node attributes. To effectively
+extract spatial relationships among EEG channels, we employ
+ChebyNet as the GCN layer in our model. Moreover, instead
+of solely using averaged features, we construct EEG signals
+as a sequence of spatial graphs to explicitly learn the temporal
+contextual information.
+B. Temporal Context Learning
+Emotion is a continuous cognitive process underlying which
+the temporal contextual information is embedded in the EEG
+signals. Methods that can learn the temporal dynamics of the
+sequence are often used as a temporal context extraction module. [25] utilize a long short-term memory network (LSTM)
+to predict the temporally continuous emotion scores. Using
+a temporal convolutional network (TCN) shows improved
+emotion regression results in [29]. However, both of them learn
+from flattened EEG feature vectors, which cannot effectively
+learn the spatial relations. TESANet [30] uses 1-D CNN to
+extract spatial information in spectral filtered EEG after which
+LSTM and self-attention are utilized to extract temporal dynamics to predict the odor pleasantness from the EEG signal.
+Conformer [31] combines CNN and transformer, achieving
+promising classification results for both emotion and motor
+imagery tasks. AMDET [32] utilizes a transformer and attention mechanism on the spectral-spatial-temporal dimensions of
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+MLP
+
+3
+
+MLP
+
+Regression
+
+Mean
+
+TSO
+
+Classification
+
+TCT block
+TCT block
+Tokens: 𝑠 "
+RMPG
+
+𝑠
+
+&
+
+𝑠
+
+… 𝑠 ()* 𝑠 ()' 𝑠 ()&
+
+'
+
+RMPG
+
++
+
+LP #
+𝐴"
+
+LP "
+
+LP %
+
+Φ!" (#)
+
+Φ!$ (#)
+
+Share
+LP #
+
+𝐴$
+
+𝑮𝑻 = 𝓖𝒊 :
+
++
+
+𝐴"
+
+LP "
+
+LP %
+
+Φ!" (#)
+
+Φ!$ (#)
+𝐴$
+
+…
+
+f
+
+TGC
+
+:
+
+…
+
+𝑿∈ℝ
+
+Ch 0
+Ch 1
+
+…
+
++×-
+
+Ch (c-1)
+Ch (c-2)
+
+Time
+
++
+
++
+
+Channel
+MLP
+
+Channel
+MLP
+
+Norm
+
+Norm
+
++
+
++
+
+STA
+
+RNNs
+
+MSA
+
+LP
+
+Norm
+
+Norm
+
+Input
+Emb
+
+Input
+Emb
+
+TCT-Clas
+
+TCT-Regr
+
+MLP: Multilayer perceptron LP: Linear projection
+Φ!" : Base graph encoder Norm: Layer normalization
+MSA: Multi-head self-attention STA: Short-time aggregation
+Emb: Embedding RNNs: Recurrent Neural Networks
++ : Element-wise addition
+
+Fig. 1. The network structure of EmT. The temporal graphs from TGC are used as the input to RMPG that will transfer each graph into one token embedding.
+Then TCT extract the temporal contextual information via specially designed token mixers. We propose two types of TCT structures, named TCT-Clas
+and TCT-Regr, for classification and regression tasks separately. A mean fusion is applied before feeding the learned embeddings into MLP head for the
+classification output. For regression tasks, a MLP head projects each embedding in the sequence into a scalar to generate a sequence that can be used to
+regress the temporally continuous labels.
+
+Graph construction
+𝑮𝑻 = {𝓖𝒊 }
+
+f
+
+…
+Time
+Feature extraction
+
+…
+
+𝑭 ∈ ℝ!×$
+$ ∈ ℝ!×#!
+𝑿
+
+…
+
+Ch (c-2)
+Ch (c-1)
+
+Sliding window
+
+…
+
+Ch 0
+Ch 1
+
+knowledge that emotion is short-term stable and long-term
+varying.
+
+_
+𝑿 ∈ ℝ!×#
+
+Fig. 2. Illustration of TGC. Each segment, X̄, is split into several subsegment, X̃. Features in different frequency bands are extracted for each X̃
+channel by channel to form F . Then each EEG channel is regarded as a
+node, and the extracted features are treated as node attributes. Combing all
+the graphs which are in time order, we get the temporal graphs, GT .
+
+EEG data for EEG emotion recognition. Different from them,
+our model effectively learns from spatial topology information
+via parallel GCNs with learnable adjacency matrices. We also
+propose a short-time aggregation layer inspired by the prior
+
+C. EEG Emotion Recognition
+Emotion recognition using EEG data presents a formidable
+challenge, primarily due to the inherent variability across
+subjects and the subjectivity involved in perceiving emotions.
+The efficacy of prediction hinges on the development of a
+model capable of discerning crucial features that can distinguish between emotional classes. These extracted features
+typically encompass spectral, spatial, and temporal characteristics. Spectral features are typically derived through Fourierbased techniques, involving data filtering, and subsequent
+calculation of parameters like power spectral density (PSD) or
+differential entropy (DE). Alternatively, spectral filtering can
+be achieved by convolutions along the temporal dimension.
+Spatial features, on the other hand, are obtained through
+spatial convolution, often using convolutional neural networks
+(CNNs) and graph convolutional neural networks (GNNs).
+[12] propose DGCNN, a GCN-based network with a learnable adjacency matrix, to learn dynamical spatial patterns
+from differential entropy (DE) features. Based on DGCNN, a
+broad learning system (BLS) is added in graph convolutional
+broad network (GCB-Net) [13], which improves the emotion
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+classification results. [7] proposed a regularized graph neural
+network (RGNN) with a neuroscience-inspired learnable adjacency matrix that is constrained to be symmetric and sparse
+to perform graph convolution. [18] proposed the instanceadaptive graph method to create graphic connections that are
+adapted to the given input. TSception [8] utilizes multi-scaled
+temporal and spatial kernels to extract multiple frequency and
+spatial asymmetry patterns from EEG. Although they can learn
+the spatial and short-time temporal patterns, less attention is
+paid to the long-short-time contextual information underlying
+emotional cognitive processes.
+
+4
+
+B. Residual Multi-view Pyramid GCN
+An RMPG is proposed to modulate the dynamical spatial relations among EEG channels underlying emotional processes.
+For each G i in GT , RMPG learns one flattened embedding as
+one temporal token si for the subsequent transformer model.
+A base graph encoder, Φg (·), is utilized to learn graph
+representations. Φg (·) can be ChebyNet [26], GCN [28], GAT
+[33] etc.. In this paper, we use ChebyNet as our base graph
+encoder:
+K−1
+X
+Φg (F m , A) = σ(
+θkm Tk (L̂)F m−1 − bm ),
+(1)
+k=0
+
+III. M ETHOD
+In this work, we propose a novel transformer, EmT, for
+both the generalized cross-subject EEG emotion classification
+and regression tasks. The network architecture is shown in
+Figure 1. EmT consists of four main parts: (1) temporal graph
+construction module (TGC), (2) RMPG, (3) TCT, and (4)
+task-specific output module (TSO). In TGC, EEG signals are
+transformed into temporal graph format that is a sequence
+of EEG feature graphs, as shown in Figure 2. RMPG learns
+dynamical graph representations for each EEG feature graph
+within the series and the learned representations of each graph
+are fused into one token. TCT learns the temporal contextual
+information via specially designed token mixers. Finally, the
+TSO module will generate the desired output for classification
+and regression tasks accordingly.
+A. EEG-temporal-graph Representations
+Temporal graphs are constructed to allow the neural network
+to learn spatial and temporal contextual information. Two steps
+are required to generate the temporal graphs from EEG, which
+are EEG segment/sub-segment segmentation and feature extraction, respectively. Figure 2 shows the construction process
+for one EEG segment.
+Firstly, EEG signals are split into short segments that are
+further split into several shorter sub-segments using sliding
+windows. Given one trial of c-channel EEG signals, denoted
+by X ∈ Rc×L , it is split into short segment X̄ ∈ Rc×l using
+a sliding window of length l, with a hop step being s. Then
+another sliding window whose length and hop step are l′ and
+s′ is utilized to split each X̄ into a series of sub-segment
+′
+X̃ ∈ Rc×l , where L > l > l′ . In this paper, l = 20sec =
+20 ∗ fs , s = 4sec = 4 ∗ fs for all three datasets, where fs
+is the sampling rate of EEG signals. For SEED and THU-EP,
+l′ = 2sec = 2 ∗ fs and s′ = 0.5sec = 0.5 ∗ fs . For FACED,
+l′ = 4sec = 4 ∗ fs and s′ = 1sec = 1 ∗ fs .
+Relative power spectral density (rPSD) features are calculated for each sub-segment X̃ to extract frequency information
+of short-period EEG signals. Specifically, the rPSD in delta (14 Hz), theta (4-8 Hz), alpha (8-12 Hz), low beta (12-16 Hz),
+beta (16-20 Hz), high beta (20-28 Hz), and gamma (30-45 Hz)
+seven bands are calculated using welch’s method for each EEG
+channel to get a feature matrix F ∈ Rc×f , where f = 7, for
+each X̃. Each channel is regarded as one node and the rPSDs
+are regarded as node attributes. Hence, we have a temporal
+graph representation GT = {G i } ∈ Rseq×c×f for one X̄.
+
+where m = [1, 2, ...] is the number of GCN layers, A ∈ Rc×c
+is the adjacency matrix, σ is the ReLU activation function,
+θ is the learnable parameter, Tk is the k-order Chebyshev
+polynomials that are defined as T0 (x) = 1, T1 (x) = x,
+Ti (x) = 2Ti−1 (x) − Ti−2 (x), L̂ = 2L/λmax − I with
+1
+1
+L = I − D − 2 AD − 2 is the re-scaling operation of L, and b
+is the bias. We approximate λmax ≈ 2 as [28] to remove its
+1
+1
+high computational cost. Hence, we have L̂ = −D − 2 AD − 2 .
+To modulate different brain region connections for
+multiple basic cognitive processes underlying emotions
+[14], we propose to use multiple different-layer GCNs,
+{Φ0g (·), Φ1g (·), ..., Φig (·)} with learnable adjacency matrices
+[12], {A0 , A1 , ..., Ai }. These adjacency matrices are randomly initialized with different values and can be dynamically
+adjusted using gradient backpropagation [12]. Each Ai can
+learn one view of graph connections that belongs to a certain
+basic cognitive process. For each Φig (·), stacking different
+layers of GCNs can learn different degrees of node cluster
+similarity [34]. Intuitively, for localized connections, such as
+electrodes within a brain functional area, a deeper GCN can
+get a consistent representation among these nodes. However,
+for global connections that are among different brain functional areas, a shallow GCN can aggregate the information
+among these areas while not over smooth it. The deeper the
+Φig (·) is, the taller the feature pyramid level its output has. A
+linear projection layer, LP(·), is added for each Φig (·) to project
+the flattened graph representations into a hidden embedding
+denoted by Hgi ∈ Rdg . By stacking Hgi from parallel differentlayer GCNs, we can get multi-view pyramid graph embeddings
+as:
+{Hgi } = {LPi (Γ(Φig (F , Ai )))},
+(2)
+where {·} is the stack operation and Γ(·) is the flatten
+operation.
+A linear residual branch is added to additionally provide
+some information about the non-filtered graphs. The output
+serves as the base of the feature pyramid. The linear layer
+project the flattened G i into a vector, Hg−base , that has the
+same size as Hgi . A mean fusion is applied to combine
+different level graph information in the feature pyramid to
+form one token:
+s = mean({Hg−base , Hg0 , ..., Hgi }),
+
+(3)
+
+where s ∈ Rdg is the token embedding for each G of GT , and
+Hg−base = LP(Γ(G)). To this end, GT becomes a temporal
+token sequence denoted by ST = {si } ∈ Rseq×dg .
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+5
+
+C. Temporal Contextual Transformer
+Two types of TCTs with different token mixers for classification and regression tasks are proposed to capture temporal contextual information of EEG underlying emotional
+processes. MetaFormer [19] shows that MSA can be replaced
+by different token mixers in transformers. We propose two
+types of token mixers with which we have EmT-Clas and
+EmT-Regr for EEG emotion classification and regression separately. EmT refers to EmT-Clas unless otherwise stated. Given
+ST = {si } ∈ Rseq×dg from RMPG, one block of TCT can
+be represented as:
+Z m = TokenMixerclas/regr (Norm(Z m−1 )) + Z m−1 ,
+
+(4)
+
+Z m+1 = MLP(Norm(Z m )) + Z m ,
+
+(5)
+
+where m = [1, 2, ...] is the number of layers in TCT blocks,
+Z 0 = ST , and MLP has two linear layers with the ReLU
+activation in between. A dropout layer is added after each
+linear layer.
+1) Token Mixers for Classification Tasks: For classification
+tasks, MSA is utilized in TokenMixerclas (·) to attentively
+emphasis the parts that are highly correlated to the overall
+emotional state of ST . The tokens in ST are then linearly
+projected into multiple groups of key (K i ), query (Qi ), and
+i
+value (V i ) using multiple LP(·), parameterized by Wqkv
+∈
+dg ×3dhead
+:
+R
+i
+{Qi , K i , V i } = LPi (ST ) = ST Wqkv
+.
+
+(6)
+
+The scaled dot-product is utilized as the attention operation
+along temporal tokens to capture long-time context:
+√
+(7)
+Attn(Q, K, V ) = Softmax(QK T / d)V ,
+where d = dhead is a scaling factor. Because we need to
+apply the proposed STA on separate outputs from heads, we
+just stack the head outputs in the formula below:
+MSA(ST ) = {Attn(LP0 (ST ), ..., Attn(LPnhead −1 (ST )}.
+(8)
+Considering the fact that emotion is short-term continuous and
+long-term varying [17], we propose a short-time aggregation
+(STA) layer after MSA to learn the long-short-time contextual
+information. A dropout layer with a scaling factor α, dp(α) is
+applied to control the forgetting rate of the temporal context. α
+is a hyper-parameter that will scale down the overall dropout
+rate in STA. To capture short-term consist patterns and smooth
+the effects of the changes in emotional states, CNN kernels
+denoted by Kcnn whose size and step are (nanchor , 1), (1, 1)
+are utilized to aggregate nanchor temporal neighbors after
+MSA. Let Hattn ∈ Rnhead ×seq×dhead denotes one output of
+MSA. STA can be described as:
+STA(Hattn ) = Reshape(Conv2D(dp(Hattn ), Kcnn ))Wsta ,
+(9)
+where Conv2D(·) is the 2D convolution operation with the
+input being dp(Hattn ) and the kernel being Kcnn , Reshape(·)
+is the reshape operation (nhead , seq, dhead ) → (seq, nhead ∗
+dhead ), and Wsta ∈ Rnhead ∗dhead ×dg is the projection weight
+matrix. The input and output channels of the Conv2D(·)
+
+TABLE I
+D ETAILS OF E M T VARIANTS .
+Model GCN layers⋆
+
+dg
+
+EmT-S
+EmT-B
+EmT-D
+
+32
+32
+32
+
+1, 2
+1, 2
+1, 2
+
+TCT layers nhead
+2
+4
+8
+
+16
+16
+16
+
+dhead
+
+K†
+
+32
+32
+32
+
+3/4
+3/4
+3/4
+
+⋆: the layers of two parallel GCNs; †: K = 3 for less-channel EEG (e.g.
+32 in THU-EP and MAHNOB-HCI) and K = 4 for more-channel EEG
+(e.g. 62 in SEED).
+
+all equal nhead . The same padding is utilized to avoid size
+changes before and after STA. Hence, TokenMixerclas can be
+described as:
+TokenMixerclas (ST ) = STA(MSA(ST )).
+
+(10)
+
+2) Token Mixers for Regression Tasks: An RNN-based
+token mixer is utilized instead of MSA for TokenMixerregr (·).
+MSA emphasises the parts that are highly correlated to the
+overall emotional state within a sequence via SA. This is
+helpful for the classification task that requires a single output
+of the sequence. However, the regression task needs the model
+to predict the continuous changes in the emotional states for all
+the segments within the sequence. Because RNN-based token
+mixer can fuse the information of all the segments recurrently,
+it is more suitable for the regression task. The tokens in
+ST ∈ Rseq×dg are projected into values (V ) using a projecting
+weight matrix, Wv ∈ Rdg ×dhead . Because the RNN-based
+token mixer can be RNN, LSTM, GRU, etc., we use RNNs to
+denote the RNN family. A two-layer bi-directional GRU whose
+output length is 2 ∗ dhead is empirically selected as the token
+mixer for EmT-Regr in this paper. Hence, TokenMixerregr can
+be described by:
+TokenMixerregr (ST ) = RNNs(LP(ST )),
+
+(11)
+
+where LP(ST ) = ST Wv is a linear layer.
+D. Task-specific Output Module
+MLP heads are utilized to generate the desired output for
+classification and regression tasks. Let Sclas ∈ Rseq×dhead
+and Sregr ∈ Rseq×2∗dhead denote the learned embedding sequences for classification and regression tasks. The difference
+is that a mean fusion is applied to Sclas to combine the
+information of all the segments. Hence, the final classification
+output, Ŷclas ∈ Rnclass is calculated by:
+Ŷclas = mean(Sclas )Wclas + bclas
+
+(12)
+
+where Wclas ∈ Rdhead ×nclass , and bclas ∈ Rnclass are the
+weights and bias, respectively. And the final regression output,
+Ŷregr ∈ Rseq is calculated by:
+Ŷregr = Sregr Wregr + bregr
+
+(13)
+
+where Wregr ∈ R2∗dhead ×1 , and bregr ∈ R1 are the weights
+and bias, respectively.
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+6
+
+TABLE II
+G ENERALIZED EMOTION CLASSIFICATION RESULTS OF DIFFERENT METHODS ON THE SEED, THU-EP AND FACED DATASETS . T HE BEST RESULTS ARE
+HIGHLIGHTED IN BOLD AND THE NEXT BEST ARE MARKED USING UNDERLINES .
+SEED
+
+Method
+
+THU-EP
+
+FACED
+
+ACC
+
+std
+
+F1
+
+std
+
+ACC
+
+std
+
+F1
+
+std
+
+ACC
+
+std
+
+F1
+
+std
+
+DGCNN
+GCB-Net
+RGNN
+TSception
+TCN
+LSTM
+TESANet
+Conformer
+AMDET
+
+0.724
+0.684
+0.790
+0.662
+0.765
+0.733
+0.658
+0.612
+0.721
+
+0.145
+0.172
+0.148
+0.181
+0.140
+0.158
+0.115
+0.127
+0.168
+
+0.619
+0.517
+0.802
+0.621
+0.737
+0.670
+0.606
+0.529
+0.649
+
+0.311
+0.357
+0.133
+0.283
+0.219
+0.274
+0.240
+0.221
+0.306
+
+0.567
+0.554
+0.572
+0.591
+0.577
+0.558
+0.578
+0.601
+0.586
+
+0.033
+0.043
+0.030
+0.059
+0.031
+0.035
+0.037
+0.038
+0.044
+
+0.647
+0.620
+0.695
+0.707
+0.677
+0.626
+0.673
+0.691
+0.677
+
+0.052
+0.088
+0.054
+0.060
+0.031
+0.062
+0.072
+0.042
+0.098
+
+0.562
+0.565
+0.587
+0.619
+0.552
+0.568
+0.593
+0.590
+0.591
+
+0.045
+0.052
+0.050
+0.088
+0.035
+0.063
+0.054
+0.035
+0.043
+
+0.697
+0.685
+0.722
+0.702
+0.673
+0.700
+0.723
+0.720
+0.726
+
+0.043
+0.053
+0.721
+0.237
+0.035
+0.064
+0.056
+0.035
+0.043
+
+EmT-S (ours)
+EmT-B (ours)
+EmT-D (ours)
+
+0.780
+0.788
+0.802
+
+0.117
+0.117
+0.115
+
+0.759
+0.793
+0.821
+
+0.159
+0.120
+0.093
+
+0.570
+0.595
+0.583
+
+0.032
+0.047
+0.049
+
+0.662
+0.724
+0.671
+
+0.050
+0.044
+0.102
+
+0.589
+0.608
+0.579
+
+0.029
+0.065
+0.068
+
+0.723
+0.740
+0.709
+
+0.030
+0.058
+0.062
+
+IV. E XPERIMENT
+A. Datasets
+For the classification task, we evaluate the performance of
+EmT with three emotion EEG datasets, which are SEED [22],
+THU-EP [23] and FACED [24]. For the regression task, we
+use a subset of the MAHNOB-HCI dataset [25].
+The SEED dataset encompasses data from 15 native Chinese
+subjects, with the objective of eliciting negative, positive, and
+neutral emotions using 15 Chinese film clips. Each film clip
+has a duration of approximately 4 minutes. Subsequently,
+the participants are tasked with providing self-evaluations
+regarding their emotional responses, considering dimensions
+such as valence and arousal after viewing these film clips.
+To record brain activity, EEG signals are acquired using a 62channel electrode setup arranged in the 10-20 system, at a high
+sampling rate of 1000 Hz. The data undergo preprocessing,
+which includes applying a bandpass filter with a frequency
+range of 0.3 to 50 Hz.
+The THU-EP dataset comprises data from 80 subjects,
+involving the use of 28 video clips as stimuli to elicit negative,
+positive, and neutral emotions. Each video clip has an average
+duration of approximately 67 seconds. These video clips are
+associated with a range of emotion items, including anger,
+disgust, fear, sadness, amusement, joy, inspiration, tenderness,
+arousal, valence, familiarity, and liking. After viewing each
+video clip, subjects provided self-report emotional scores
+for these emotion items. The EEG data was recorded using
+a 32-channel EEG system at a sampling rate of 250 Hz.
+The collected data underwent preprocessing, which included
+applying a bandpass filter with a frequency range of 0.05 to
+47 Hz. Additionally, independent component analysis (ICA)
+was employed to effectively remove artifacts from the EEG
+data.
+The FACED dataset is an extended version of the THU-EP
+dataset, comprising data from 123 subjects. The experimental
+protocol remains the same as THU-EP, with the addition of
+43 subjects, making it a relatively larger dataset for studying
+emotions using EEG. The official pre-processed data is used
+in this study, with pre-processing steps identical to those in
+THU-EP.
+
+MAHNOB-HCI is a comprehensive multi-modal dataset
+designed for the investigation of human emotional responses
+and the implicit tagging of emotions. This dataset involves
+the participation of 30 subjects in data collection experiments.
+In these experiments, each subject views 20 film clips while
+a variety of data streams are recorded in synchronization.
+For the specific task of emotion recognition, a subset of the
+MAHNOB-HCI database, as referenced in [1], is employed.
+This subset encompasses 24 participants and 239 trials, with
+continuous valence labels provided by multiple experts. The
+final labels used for analysis are derived by averaging the
+annotations from these experts. The EEG signals in the dataset
+are collected using 32 electrodes, and they are sampled at a
+rate of 256 Hz. Notably, the annotations in the dataset are
+characterized by a resolution of 4 Hz.
+B. Baselines
+We demonstrate the performance of EmT by comparing the
+following baseline methods:
+1) DGCNN (graph-based): DGCNN [12] dynamically
+learns the relationships between different EEG channels
+through neural network training, represented by a learnable adjacency matrix. This dynamic learning enhances the extraction
+of more discriminative EEG features, ultimately improving
+EEG emotion recognition.
+2) GCB-Net (graph-based): Based on DGCNN, graph convolutional broad network (GCN-Net) [13] integrates a broad
+learning system (BLS) to the nerual network. GCB-Net employs a graph convolutional layer to extract features from
+graph-structured input and then stacking multiple conventional
+convolutional layers to derive relatively abstract features.
+Subsequently, the final concatenation phase adopts a broad
+concept, preserving the outputs from all hierarchical layers,
+which facilitates the model in exploring features across a wide
+spectrum.
+3) RGNN (graph-based): RGNN [8] utilizes the biological
+topology of different brain regions to capture both local and
+global relationships among EEG channels. It models the interchannel relations in EEG signals through an adjacency matrix
+within a graph neural network, where the connections and
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+sparsity of the adjacency matrix are inspired by neuroscience
+theories regarding human brain organization.
+4) TSception (CNN-based): TSception [8] is a multi-scale
+convolutional neural network designed for generalized emotion
+recognition from EEG data. TSception incorporates dynamic
+temporal, asymmetric spatial, and high-level fusion layers,
+working together to extract discriminative temporal dynamics and spatial asymmetry from both the time and channel
+dimensions.
+5) LSTM (temporal-learning): LSTM based neural networks [25] are utilized to predict the continuously annotated
+emotional labels. LSTM is capable to learn the long-term
+temporal dependencies among the EEG segments.
+6) TCN (temporal-learning): Zhang et al., use TCN [29]
+to learn the temporal information for the continuous EEG
+emotion regression tasks. The results indicate TCN has better
+regression performances than LSTM.
+7) TESANet (temporal-learning): TESANet [30] has been
+developed to discern the relations between time segments
+within EEG data, enabling the prediction of pleasant and unpleasant emotional states. This network architecture comprises
+a filter-bank layer, a spatial convolution layer, a temporal
+segmentation layer responsible for partitioning the data into
+overlapping time windows, a LSTM layer for encoding these
+temporal segments, and a self-attention layer.
+8) Conformer (temporal-learning): The Conformer [31]
+combines a CNN encoder and a transformer to capture both
+the short- and long-term temporal dynamics encoded in EEG
+signals, achieving promising results for emotion and motor
+imagery classification tasks.
+9) AMDET (temporal-learning): AMDET [32] learns from
+3D temporal-spectral-spatial representations of EEG signals. It
+utilizes a spectral-spatial transformer encoder layer to extract
+meaningful features from the EEG signals and employs a
+temporal attention layer to highlight crucial time frames,
+considering the complementary nature of the spectral, spatial,
+and temporal features of the EEG data.
+
+C. Experiment Settings
+We conduct generalized subject-independent settings in this
+study where test data information is never used during the
+training stage. For SEED, we use a leave-one-subject-out
+(LOSO) setting. For each step in LOSO, one subject’s data
+is selected as test data. 80% of the training data is used as
+training data, and the rest 20% is used as validation data. For
+the THU-EP and FACED datasets, we adopt a leave-n-subjectout setting [35], where nTHU-EP = 8, and nFACED = 12. The
+last three subjects are added in the 10-th fold in FACED. 10%
+of the training data is used as the validation data. We perform
+binary classification on the positive and negative emotions on
+SEED, THU-EP, and FACED as [36]. We process the valence
+score of THU-EP and FACED into a binary class of high
+and low valence using a threshold of 3.0. For the regression
+task, we follow the same data pre-processing and experiment
+settings used in [29]. A LOSO is conducted for the regression
+task which is identical to the one for SEED.
+
+7
+
+D. Model Variants
+We propose three types of EmT variants, namely EmTshallow (EmT-S), EmT-base (EmT-B), and EmT-deep (EmTD). The configurations are shown in Table I. As the names
+show, the differences among these variants are the depth of
+the TCT blocks. For the K of Chebyshev polynomials is
+decided by the number of EEG channels (nodes in graphs).
+This is because K decides how many hops from the central
+vertex the GCN can aggregate. If the number of EEG channels
+is relatively less, e.g., 32 in THU-EP and MAHNOB-HCI,
+K = 3. K will be a larger value, K = 4 when the EEG
+signals have more channels such as 62 in SEED. EmT-S is
+used as the EmT-Regr because it gives the best results on the
+validation (development) set.
+E. Evaluation Metrics
+The evaluation metrics for emotion classification are the
+same as those in [8]: Accuracy (ACC) and F1 scores. They
+can be calculated by
+Accuracy =
+
+F1 = 2 ×
+
+TP + TN
+TP + FP + TN + FN
+
+(14)
+
+Precision × Recall
+TP
+=
+1
+Precision + Recall
+TP + 2 (FP + FN)
+
+(15)
+
+where TP denotes true positives, TN denotes true negatives,
+FP denotes false positives, and FN denotes false negatives.
+The evaluation metrics for emotion regression are the same
+as those in [29]: root mean square error (RMSE), Pearson’s
+correlation coefficient (PCC), and concordance correlation
+coefficient (CCC). Given the prediction ŷ, and the continuous
+label y, RMSE, PCC, and CCC can be calculated by
+s
+Pi=0
+2
+2
+ŷ − y
+N −1 (ŷi − yi )
+RMSE =
+=
+,
+(16)
+N
+N
+Pi=0
+σŷy
+N −1 (ŷi − µŷ )(yi − µy )
+qP
+PCC =
+= qP
+,
+i=0
+i=0
+σŷ σy
+(ŷ − µ )2
+(y − µ )2
+N −1
+
+i
+
+ŷ
+
+N −1
+
+i
+
+y
+
+(17)
+CCC =
+
+2σŷy
+,
+σŷ2 + σy2 + (µŷ − µy )
+
+(18)
+
+where N denotes the number of elements in the prediction/label vector, σŷy denotes the covariance, σŷ and σy are
+the variances, and µŷ and µy are the means.
+F. Implementation Details
+The model configurations can be found in Table I. We first
+introduce the training parameters for classification tasks. The
+cross-entropy loss is utilized to guide the training. We use an
+AdamW optimizer with an initial learning rate of 3e-4. The
+label smoothing with a smoothing rate of 0.1 and a dropout
+rate of 0.25 are applied to avoid over-fitting. The batch size is
+64 for all datasets. The training epochs are 10, 30, and 30 for
+SEED, THU-EP, and FACED. And the model with the best
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+TABLE III
+E MOTION REGRESSION RESULTS ON MAHNOB-HCI.
+Method
+
+RMSE ↓
+
+PCC ↑
+
+CCC ↑
+
+LSTM [25]
+TCN [29]
+EmT-Regr (MSA)⋆
+EmT-Regr (LP+RNN)⋆
+EmT-Regr (LP+LSTM)⋆
+EmT-Regr (LP+GRU)⋆
+
+0.081
+0.066
+0.075
+0.069
+0.063
+0.068
+
+0.427
+0.474
+0.393
+0.470
+0.483
+0.490
+
+0.306
+0.377
+0.312
+0.381
+0.390
+0.396
+
+↓: the lower the better; ↑: the higher the better.
+:EmT-Regr (token mixer type)
+
+⋆
+
+TABLE IV
+G ENERALIZED EMOTION CLASSIFICATION RESULTS OF ABLATION
+STUDIES ON THE SEED AND THU-EP DATASETS .
+SEED
+
+Method
+w/o RMPG
+w Single GCN
+w/o TCT
+w/o STA
+EmT (ours)
+
+THU-EP
+
+ACC
+
+F1
+
+ACC
+
+F1
+
+0.775
+0.773
+0.777
+0.784
+0.802
+
+0.793
+0.760
+0.749
+0.795
+0.821
+
+0.577
+0.551
+0.592
+0.582
+0.595
+
+0.663
+0.642
+0.698
+0.690
+0.724
+
+validation accuracy is used to evaluate the test data. α in STA
+is empirically selected as 0.25 for SEED, 0.1 for THU-EP
+and 0.4 for FACED. For regression tasks, we use a CCC loss,
+2σŷy
+LCCC (ŷ, y) = 1− σ2 +σ2 +(µ
+, where σŷy is the covariance,
+ŷ −µy )
+y
+ŷ
+σŷ and σy are the variances, and µŷ and µy are the means, an
+Adam optimizer with an initial learning rate of 5e-5 and a
+weight decay of 1e-3, a batch size of 2, and a window length
+of 96 with a hop step of 32. We train the network for 30
+epochs and use the model of the last epoch to evaluate the
+test data.
+V. R ESULTS AND A NALYSES
+A. Emotion Classification
+The experimental results are shown in Table II. We evaluate
+the methods using accuracy and F1 score. On the SEED
+dataset, EmT-D achieves the highest accuracy (0.802) and
+the highest F1 score (0.821), indicating its effectiveness in
+emotion classification. EmT-B also performs well with an
+accuracy of 0.788 and an F1 score of 0.793, while EmT-S
+shows a slightly lower accuracy of 0.780 but a strong F1 score
+of 0.759. RGNN achieves the second-best performance on the
+SEED dataset with an accuracy of 0.790 and an F1 score of
+0.802. Notably, the methods that use features as input generally
+perform better than those using EEG as input. Additionally,
+learning from the temporal sequence of features consistently
+achieves better performance than learning from the features
+directly, except in the case of RGNN. This indicates the
+effectiveness of learning the temporal contextual information. Furthermore, compared to TCN, LSTM, TESANet, and
+AMDET, EmT can learn the spatial information better with
+the help of the GCN-based modules.
+The observations on the THU-EP and FACED datasets are
+different. For the THU-EP dataset, EmT-B achieves the best
+
+8
+
+F1 score of 0.724, while Conformer achieves the best accuracy (0.601). On the FACED dataset, EmT-B leads with the
+second-best accuracy (0.608) and the highest F1 score (0.740).
+AMDET achieves the second-best F1 score of 0.726, while the
+best accuracy is achieved by TSception (0.619). As the classes
+are imbalanced in both the THU-EP and FACED datasets, F1
+scores are more important than accuracy. EmT-B achieves the
+highest F1 scores on both THU-EP and FACED, demonstrating
+its effectiveness in emotion classification. Different from the
+observations on the SEED dataset, the baselines using EEG as
+input achieve better performance than those using features as
+input. This might be because there are more subjects in THUEP and FACED, and using EEG directly can provide more
+information.
+For the SEED dataset (62 channels, 15 subjects), there is a
+positive correlation between the number of transformer layers
+and performance, with EmT-D (8 layers) performing best due
+to the enriched spatial information from the higher number
+of channels. However, for the THU-EP and FACED datasets
+(32 channels, more subjects), EmT-B (4 layers) achieves
+better results, likely due to fewer channels and higher subject
+variability, where deeper models like EmT-D tend to overfit.
+Overall, EmT-B strikes a better balance between temporal and
+spatial learning in datasets with fewer channels and greater
+inter-subject variability.
+B. Emotion Regression
+The regression results are shown in Table III. According
+to the results, EmT-Regr (LP+LSTM) achieved the lowest
+RMSE (0.063) among all compared approaches, while EmTRegr (LP+GRU) achieved the best PCC (0.490) and CCC
+(0.396), indicating the effectiveness of the proposed method.
+However, when using MSA as the token mixer in EmT, the
+performance reduced dramatically, falling below all compared
+baselines. The difference between MSA and RNNs or TCN is
+that RNNs or TCN can fuse the information globally or locally,
+while MSA focuses on learning the global temporal relations
+and emphasizing certain parts of the sequence. Hence, the
+results indicate that fusing information from all segments is
+crucial for regression tasks.
+C. Ablation
+To explore the contributions of the RMPG, TCT, and STA
+modules, we conducted an ablation analysis by systematically
+removing each layer and observing the subsequent effects on
+classification performance. The results of this analysis are
+detailed in Table IV. Among all the ablation experiments,
+using only a single GCN had the most detrimental impact,
+leading to a 2.9% and 6.1% decrease in ACC and F1 score on
+the SEED dataset, and a 4.4% and 8.2% decrease on the THUEP dataset. When EmT was tested without the RMPG module,
+it exhibited the second-largest reduction in accuracy on both
+datasets, with decreases of 2.7% and 1.8%, respectively. Similarly, the removal of TCT and STA modules also resulted in
+noticeable reductions in classification accuracy and F1 scores.
+These findings highlight that all the proposed modules work
+synergistically to enhance the predictive capabilities of EmT.
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+1
+
+0.9
+
+0.6
+
+ACC
+F1
+
+0.8
+
+9
+
+RMSE
+
+0.5
+
+PCC
+
+CCC
+
+0.6
+ACC
+F1
+
+0.85
+
+0.5
+
+0.8
+
+0.4
+
+0.75
+
+0.3
+
+0.2
+
+0.7
+
+0.2
+
+0.2
+
+0.1
+
+0.65
+
+0.1
+
+0
+
+0
+
+0.6
+
+ACC/F1
+
+0.4
+
+0.6
+
+0.3
+0.4
+
+PSD
+
+DE
+
+DE
+
+rPSD
+
+(a) Classification
+
+rPSD
+
+(b) Regression
+
+2
+
+4
+
+6
+
+8
+
+Number of TCT blocks
+
+PCC
+
+CCC
+
+4
+
+6
+
+8
+
+0
+2
+
+(a) Classification
+
+Fig. 3. Effect of feature types on emotion classification and regression
+performances of EmT using SEED and MAHNOB-HCI. Using rPSD gives
+the overall best performances. We don’t add PSD results for regression tasks
+in (b) because the model cannot converge.
+
+RMSE
+
+Number of TCT blocks
+
+(b) Regression
+
+Fig. 5. Effect of the number of TCT blocks on emotion classification and
+regression performances of EmT using SEED and MAHNOB-HCI.
+
+E. Effect of The Depth and Width of GCNs in RMPG
+0.9
+
+ACC
+F1
+
+0.85
+0.8
+0.75
+0.7
+
+0.8
+0.75
+0.7
+0.65
+
+0.65
+0.6
+
+ACC
+F1
+
+0.85
+ACC/F1
+
+ACC/F1
+
+0.9
+
+1, 1
+
+1, 2
+
+2, 2
+
+2, 3
+
+Depth of GCN layers
+
+(a)
+
+0.6
+
+8
+
+16
+
+32
+
+64
+
+Width of the GCN layers
+
+(b)
+
+Fig. 4. Effect of the depth (a) and width (b) of GCNs in RMPG on
+classification performance using SEED. For the depth analysis, 1,1 indicates
+that both GCN branches in RMPG have 1 layer each. The width is the hidden
+size of GCN layer.
+
+Furthermore, the ablation results underscore the significant
+contribution of the RMPG module, attributable to its ability
+to modulate dynamic spatial relations among EEG channels,
+which is crucial for effectively capturing emotional activity.
+D. Effect of EEG Features
+Fig. 3 illustrates the impact of different feature types on
+the SEED dataset for classification tasks and the MAHNOBHCI dataset for regression tasks. We compared three types of
+features: PSD, DE, and rPSD, evaluating their effects on accuracy and F1 score for classification tasks, as well as on MRSE,
+CCC, and PCC for regression tasks. For classification tasks,
+rPSD outperformed the other two feature types, providing the
+highest accuracy and F1 score. Specifically, rPSD achieved
+5.9% and 11.5% higher accuracy and F1 score, respectively,
+compared to EmT using DE. Furthermore, rPSD showed a
+13.0% and 18.9% improvement in accuracy and F1 score,
+respectively, over PSD. These results suggest that rPSD is a
+superior spectral feature for EEG emotion classification tasks.
+For regression tasks, using rPSD resulted in better MRSE and
+CCC compared to using DE. However, the difference in PCC
+between rPSD and DE was minimal, with rPSD achieving
+a PCC of 0.491 and DE achieving a PCC of 0.490. Notably,
+when PSD was used as a feature, the model failed to converge,
+so we excluded these results from further analysis. Based on
+these findings, rPSD is demonstrated to be a more effective
+feature than DE, and both rPSD and DE are superior to PSD
+for EEG emotion recognition tasks.
+
+We varied the number of GCN layers (depth) and the
+hidden size of the GCN layers (width) to evaluate their effects
+on classification performance. EmT-D and the SEED dataset
+were used for these experiments as they provide better overall
+performance compared to other configurations. The results are
+shown in Fig. 4. Since the RMPG module has two GCN
+branches, we tested four different configurations of GCN
+layers: [1, 1], [1, 2], [2, 2], and [2, 3]. These numbers represent
+the number of GCN layers (depth) for each branch in RMPG.
+As shown in Fig. 4 (a), the [1, 2] configuration yields the
+best performance. Compared to [1, 1] and [2, 2], the results
+highlight the effectiveness of the pyramid design. Additionally,
+increasing the number of GCN layers leads to a significant
+drop in classification performance, consistent with the oversmoothing issue in deeper GCNs [37]. In contrast, the effects
+of width are relatively smaller, as shown in Fig. 4 (b). There
+is a positive correlation between width and performance when
+increasing the width from 8 to 32. However, the performance
+declines when the width is increased further, likely due to
+over-fitting caused by the larger model size.
+
+F. Effect of The Number of TCT Blocks
+We vary the number of TCT blocks from 2 to 8 and
+monitor their effect on the results of the two tasks. The
+results are shown in Fig. 5. For classification, shown in
+Fig. 5 (a), as the number of TCT blocks increases from 2
+to 8, there is a noticeable improvement in both ACC and F1
+scores. Specifically, accuracy increases from 0.780 to 0.802,
+while the F1 score shows a more substantial rise from 0.759
+to 0.821, with the most significant improvement occurring
+between 6 and 8 TCT blocks. This indicates that adding more
+TCT blocks enhances the model’s ability to capture temporal
+contextual information, thereby improving classification performance. Conversely, for regression tasks, shown in Fig. 5
+(b), the number of TCT blocks has little to no effect on the
+performance metrics. The RMSE remains stable around 0.06,
+and both the PCC and CCC show minimal variation, hovering
+around 0.48 and 0.39, respectively. This suggests that while
+increasing TCT blocks benefits classification by improving
+the capture of temporal contextual information, it does not
+significantly impact regression performance.
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+10
+
+(a) SEED (62 Channels)
+
+(a) Connectivity 1
+
+(b) Connectivity 2
+
+Fig. 6. Group-level connectivity of EEG channels for the emotional cognitive
+process. The two connectivity plots demonstrate that different connectivities
+of the brain are learned for the emotional task. (a) shows the first learned
+brain connectivity. (b) shows the second learned brain connectivity.
+
+G. Analysis of The Computational Complexity
+We conducted an analysis of the computational complexity
+of various models using floating-point operations (FLOPs)
+and the number of parameters as evaluation metrics. For the
+SEED dataset, ACC is used since the classes are balanced,
+while the F1 score is used for the FACED dataset due to
+its imbalanced classes. Since THU-EP and FACED share
+the same data format, we evaluated results only on FACED,
+which is larger than THU-EP. The results are shown in Fig 7.
+TSception and Conformer are excluded from the comparison
+due to their significantly higher FLOPs than the other models.
+EmT-D achieves the highest ACC on SEED with relatively
+comparable computational complexity. EmT-B demonstrates
+higher overall decoding performance across the three datasets
+with a balance between performance and computational cost.
+H. Visualization
+1) The learned connections: Fig. 6 illustrates the learned
+connectivity of brain regions on SEED. Two learnable adjacency matrices reveal different connectivity patterns during the
+emotional cognitive process. Fig. 6 clearly shows a difference
+in the learned connectivities under emotion stimulation. In
+Fig. 6 (a), the strongest learned connections are F6-POz, P2Fz, F7-O1, PO5-Pz, T8-P7, and FC4-FPz. These connections
+indicate relationships among the frontal, parietal, and temporal
+areas, which are known to be closely related to mental attention [38]. In Fig. 6 (b), the important connections learned by
+EmT are FC4-P7, FT8-C5, Cz-Fz, T8-CP4, CP6-FP2, F2-TP8,
+and O1-P2. These connections include interactions among
+the frontal, temporal, and parietal areas, which are known to
+be related to emotions [39], [40], [41]. Additionally, some
+interactions involve the occipital and parietal areas, which are
+associated with visual processes. This is expected as videos
+were used as stimuli in the data collection experiments [22].
+The two distinct patterns in Fig. 6 reflect EmT’s ability to
+capture multiple cognitive connectivities for the given classification task.
+2) The learned temporal contextual information: We visualized the hidden features before and after the TCT blocks to
+examine 1) the nature of temporal contextual information and
+2) how TCT uses it for classification and regression tasks. For
+classification, we visualized the averaged features of samples
+
+(b) FACED (32 Channels)
+
+Fig. 7. Comparison of model performance, parameters, and FLOPS (M). The
+model size is represented by the area of the circle. TSception and Conformer
+are excluded due to much higher FLOPS than others. Our EmT-B achieves a
+promising balance between performance and computational complexity.
+
+within the same class for each subject, with a representative
+subject in FACED used to demonstrate the learned temporal
+contextual information. For regression, we visualized individual sample features, as each has a unique ground truth, and a
+representative sample is used for illustration purposes.
+The visualization results for the classification task are shown
+in Fig. 8. Here, d represents the dimension of hidden features,
+and t denotes time. ST ∈ Rseq×dg and Scls ∈ Rseq×dhead
+represent the learned features before and after the TCT blocks,
+respectively, with superscripts indicating class labels. As seen
+in Fig. 8, the features change over time before the TCT-Clas
+blocks, particularly for class 0 (low valence stimuli). After
+the TCT blocks, the activations become more consistent, likely
+due to self-attention focusing on parts strongly correlated with
+the emotional state and the SAT layer smoothing fluctuations
+by aggregating nearby temporal information. For regression,
+the visualization (Fig. 9) also shows temporal changes in the
+feature space, indicating the presence of temporal contextual
+information. Unlike classification, the regression features are
+not simply smoothed. Instead, TCT-Regr, using RNNs as
+token mixers, combines evolving features across different
+dimensions, resulting in a more complex representation that
+is well-suited for continuous emotional state prediction. The
+RNN’s ability to capture sequential dependencies allows it to
+focus on key changes necessary for continuous prediction.
+In summary, the changes in features before the TCT blocks
+confirm the presence of temporal contextual information reflecting the dynamic nature of emotional states. The TCT
+blocks handle tasks differently: in classification, features are
+smoothed to enhance separability, while in regression, RNN
+token mixers preserve temporal variations, enabling continuous emotional predictions.
+
+I. Limitations and Future Work
+Although our model performs better overall across datasets,
+there are some limitations. First, the model’s size and computational complexity can be further optimized. Additionally, while
+our model improves emotion recognition, the temporal contextual information learned remains difficult to interpret. Future
+work should design experiments to pinpoint this information.
+Exploring alternative methods, such as using the Riemannian
+manifold to capture EEG connection patterns, would also be
+a promising research direction.
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+𝑆!" (Before TCT)
+
+"
+𝑆$%&
+(After TCT)
+
+d
+
+d
+
+t
+
+t
+
+11
+
+regression tasks are conducted to evaluate EmT and relevant
+baseline methods. Results on three bench-marking datasets
+demonstrate EmT shows improvements over the compared
+baselines. Our approach is inspired by neuropsychological
+knowledge and offers a new perspective for improving decoding performance by learning multiple cognition-related graph
+connections and capturing temporal contextual information.
+These improvements are supported by enhanced performance
+and visualizations of the learned connections and temporal features. Additionally, the visualization of the temporal features
+provides insights into how different token mixers function in
+classification and regression tasks.
+
+(a) Low valance
+"
+𝑆$%&
+(After TCT)
+
+𝑆!" (Before TCT)
+
+This work was supported by the RIE2020 AME Programmatic Fund, Singapore (No. A20G8b0102) and the Agency for
+Science, Technology and Research (A*STAR) under its MTC
+Programmatic Funding Scheme (project no. M23L8b0049)
+Scent Digitalization and Computation (SDC) Programme.
+
+d
+
+d
+
+ACKNOWLEDGMENT
+
+R EFERENCES
+
+t
+
+t
+
+(b) High valance
+Fig. 8. Visualization of the learned temporal features before and after
+TCT blocks for the classification task. d represents the dimension of hidden
+features, and t denotes time. ST ∈ Rseq×dg and Scls ∈ Rseq×dhead
+represent the learned features before and after the TCT blocks, respectively,
+with superscripts indicating class labels.
+𝑆$ (Before TCT)
+
+d
+
+t
+𝑆!"# (After TCT)
+
+d
+
+t
+
+Fig. 9. Visualization of the learned temporal features before and after TCT
+blocks for the regression task. d represents the dimension of hidden features,
+and t denotes time. ST ∈ Rseq×dg and Sreg ∈ Rseq×dhead represent the
+learned features before and after the TCT blocks.
+
+VI. C ONCLUSION
+In this paper, we propose a graph-transformer-based model,
+EmT, for cross-subject EEG emotion recognition. RMPG is
+proposed to learn multiple connection patterns for different
+brain cognitive processes under emotional stimulation. TCT
+is designed to learn temporal contextual information from the
+temporal EEG graphs. Subject-independent classification and
+
+[1] S. M. Alarcão and M. J. Fonseca, “Emotions recognition using EEG
+signals: A survey,” IEEE Transactions on Affective Computing, vol. 10,
+no. 3, pp. 374–393, 2019.
+[2] P. Li, H. Liu, Y. Si, C. Li, F. Li, X. Zhu, X. Huang, Y. Zeng,
+D. Yao, Y. Zhang, and P. Xu, “EEG based emotion recognition by
+combining functional connectivity network and local activations,” IEEE
+Transactions on Biomedical Engineering, vol. 66, no. 10, pp. 2869–
+2881, 2019.
+[3] S. K. Ehrlich, K. R. Agres, C. Guan, and G. Cheng, “A closed-loop,
+music-based brain-computer interface for emotion mediation,” PloS one,
+vol. 14, no. 3, p. e0213516, 2019.
+[4] J. C. Yudong Pan and Y. Zhang, “A survey of deep learning-based
+classification methods for steady-state visual evoked potentials,” BrainApparatus Communication: A Journal of Bacomics, vol. 2, no. 1, p.
+2181102, 2023.
+[5] E. Jeon, W. Ko, J. S. Yoon, and H.-I. Suk, “Mutual information-driven
+subject-invariant and class-relevant deep representation learning in BCI,”
+IEEE Transactions on Neural Networks and Learning Systems, vol. 34,
+no. 2, pp. 739–749, 2023.
+[6] Y. Li, W. Zheng, Z. Cui, T. Zhang, and Y. Zong, “A novel neural network
+model based on cerebral hemispheric asymmetry for EEG emotion
+recognition,” in Proceedings of the Twenty-Seventh International Joint
+Conference on Artificial Intelligence, IJCAI-18, 7 2018, pp. 1561–1567.
+[7] P. Zhong, D. Wang, and C. Miao, “EEG-based emotion recognition using
+regularized graph neural networks,” IEEE Transactions on Affective
+Computing, vol. 13, no. 3, pp. 1290–1301, 2022.
+[8] Y. Ding, N. Robinson, S. Zhang, Q. Zeng, and C. Guan, “TSception:
+Capturing temporal dynamics and spatial asymmetry from EEG for emotion recognition,” IEEE Transactions on Affective Computing, vol. 14,
+no. 3, pp. 2238–2250, 2023.
+[9] J. A. Coan and J. J. Allen, “Frontal EEG asymmetry as a moderator
+and mediator of emotion,” Biological psychology, vol. 67, no. 1-2, pp.
+7–50, 2004.
+[10] Y. Li, W. Zheng, Z. Cui, T. Zhang, and Y. Zong, “A novel neural network
+model based on cerebral hemispheric asymmetry for EEG emotion
+recognition.” in IJCAI, 2018, pp. 1561–1567.
+[11] D. Huang, S. Chen, C. Liu, L. Zheng, Z. Tian, and D. Jiang, “Differences
+first in asymmetric brain: A bi-hemisphere discrepancy convolutional
+neural network for EEG emotion recognition,” Neurocomputing, vol.
+448, pp. 140–151, 2021.
+[12] T. Song, W. Zheng, P. Song, and Z. Cui, “EEG emotion recognition using
+dynamical graph convolutional neural networks,” IEEE Transactions on
+Affective Computing, vol. 11, no. 3, pp. 532–541, 2020.
+[13] T. Zhang, X. Wang, X. Xu, and C. L. P. Chen, “GCB-Net: Graph
+convolutional broad network and its application in emotion recognition,”
+IEEE Transactions on Affective Computing, vol. 13, no. 1, pp. 379–388,
+2022.
+
+IEEE TRANSACTIONS ON NEURAL NETWORKS AND LEARNING SYSTEMS
+
+[14] H. Kober, L. F. Barrett, J. Joseph, E. Bliss-Moreau, K. Lindquist, and
+T. D. Wager, “Functional grouping and cortical–subcortical interactions
+in emotion: A meta-analysis of neuroimaging studies,” NeuroImage,
+vol. 42, no. 2, pp. 998 – 1031, 2008.
+[15] P. Praamstra, L. Boutsen, and G. W. Humphreys, “Frontoparietal control
+of spatial attention and motor intention in human EEG,” Journal of
+Neurophysiology, vol. 94, no. 1, pp. 764–774, 2005.
+[16] A. J. Watrous, N. Tandon, C. R. Conner, T. Pieters, and A. D. Ekstrom,
+“Frequency-specific network connectivity increases underlie accurate
+spatiotemporal memory retrieval,” Nature neuroscience, vol. 16, no. 3,
+pp. 349–356, 2013.
+[17] Y. Zhang, H. Liu, D. Zhang, X. Chen, T. Qin, and Q. Zheng, “EEG-based
+emotion recognition with emotion localization via hierarchical selfattention,” IEEE Transactions on Affective Computing, vol. 14, no. 3,
+pp. 2458–2469, 2023.
+[18] T. Song, S. Liu, W. Zheng, Y. Zong, and Z. Cui, “Instance-adaptive graph
+for EEG emotion recognition,” Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 34, no. 03, pp. 2701–2708, Apr. 2020.
+[19] W. Yu, M. Luo, P. Zhou, C. Si, Y. Zhou, X. Wang, J. Feng, and S. Yan,
+“MetaFormer is actually what you need for vision,” in Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), June 2022, pp. 10 819–10 829.
+[20] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez,
+L. u. Kaiser, and I. Polosukhin, “Attention is all you need,” in Advances
+in Neural Information Processing Systems, vol. 30, 2017.
+[21] P. Verduyn, P. Delaveau, J.-Y. Rotgé, P. Fossati, and I. V. Mechelen,
+“Determinants of emotion duration and underlying psychological and
+neural mechanisms,” Emotion Review, vol. 7, no. 4, pp. 330–335, 2015.
+[22] W.-L. Zheng and B.-L. Lu, “Investigating critical frequency bands
+and channels for EEG-based emotion recognition with deep neural
+networks,” IEEE Transactions on Autonomous Mental Development,
+vol. 7, no. 3, pp. 162–175, 2015.
+[23] X. Hu, F. Wang, and D. Zhang, “Similar brains blend emotion in
+similar ways: Neural representations of individual difference in emotion
+profiles,” Neuroimage, vol. 247, p. 118819, 2022.
+[24] J. Chen, X. Wang, C. Huang, X. Hu, X. Shen, and D. Zhang, “A large
+finer-grained affective computing EEG dataset,” Scientific Data, vol. 10,
+p. 740, 2023.
+[25] M. Soleymani, S. Asghari-Esfeden, Y. Fu, and M. Pantic, “Analysis of
+EEG signals and facial expressions for continuous emotion detection,”
+IEEE Transactions on Affective Computing, vol. 7, no. 1, pp. 17–28,
+2016.
+[26] M. Defferrard, X. Bresson, and P. Vandergheynst, “Convolutional neural
+networks on graphs with fast localized spectral filtering,” in Advances
+in Neural Information Processing Systems, D. Lee, M. Sugiyama,
+U. Luxburg, I. Guyon, and R. Garnett, Eds., vol. 29. Curran Associates,
+Inc., 2016.
+[27] R. Levie, F. Monti, X. Bresson, and M. M. Bronstein, “CayleyNets:
+Graph Convolutional Neural Networks With Complex Rational Spectral
+Filters,” IEEE Transactions on Signal Processing, vol. 67, no. 1, pp.
+97–109, 2019.
+[28] T. N. Kipf and M. Welling, “Semi-supervised classification with graph
+convolutional networks,” in International Conference on Learning Representations, 2017.
+[29] S. Zhang, C. Tang, and C. Guan, “Visual-to-EEG cross-modal knowledge distillation for continuous emotion recognition,” Pattern Recognition, vol. 130, p. 108833, 2022.
+[30] C. Tong, Y. Ding, K. L. Jun Liang, Z. Zhang, H. Zhang, and C. Guan,
+“TESANet: Self-attention network for olfactory EEG classification,” in
+2022 International Joint Conference on Neural Networks (IJCNN), 2022,
+pp. 1–7.
+[31] Y. Song, Q. Zheng, B. Liu, and X. Gao, “EEG Conformer: Convolutional
+transformer for EEG decoding and visualization,” IEEE Transactions on
+Neural Systems and Rehabilitation Engineering, vol. 31, pp. 710–719,
+2023.
+[32] Y. Xu, Y. Du, L. Li, H. Lai, J. Zou, T. Zhou, L. Xiao, L. Liu, and
+P. Ma, “AMDET: Attention based multiple dimensions EEG transformer
+for emotion recognition,” IEEE Transactions on Affective Computing,
+vol. 15, no. 3, pp. 1067–1077, 2024.
+[33] P. Veličković, G. Cucurull, A. Casanova, A. Romero, P. Liò, and
+Y. Bengio, “Graph attention networks,” in International Conference on
+Learning Representations, 2018.
+[34] Q. Li, Z. Han, and X.-m. Wu, “Deeper insights into graph convolutional networks for semi-supervised learning,” Proceedings of the AAAI
+Conference on Artificial Intelligence, vol. 32, no. 1, Apr. 2018.
+[35] X. Shen, X. Liu, X. Hu, D. Zhang, and S. Song, “Contrastive learning of subject-invariant EEG representations for cross-subject emotion
+
+12
+
+recognition,” IEEE Transactions on Affective Computing, vol. 14, no. 3,
+pp. 2496–2511, 2023.
+[36] G. Zhang, M. Yu, Y.-J. Liu, G. Zhao, D. Zhang, and W. Zheng,
+“SparseDGCNN: Recognizing emotion from multichannel EEG signals,”
+IEEE Transactions on Affective Computing, vol. 14, no. 1, pp. 537–548,
+2023.
+[37] J. Li, Q. Zhang, W. Liu, A. B. Chan, and Y.-G. Fu, “Another perspective
+of over-smoothing: Alleviating semantic over-smoothing in deep GNNs,”
+IEEE Transactions on Neural Networks and Learning Systems, pp. 1–14,
+2024.
+[38] Y. Liu, J. Bengson, H. Huang, G. R. Mangun, and M. Ding, “Top-down
+Modulation of Neural Activity in Anticipatory Visual Attention: Control
+Mechanisms Revealed by Simultaneous EEG-fMRI,” Cerebral Cortex,
+vol. 26, no. 2, pp. 517–529, 09 2014.
+[39] Y. Gao, Z. Cao, J. Liu, and J. Zhang, “A novel dynamic brain network in
+arousal for brain states and emotion analysis,” Mathematical Biosciences
+and Engineering, vol. 18, no. 6, pp. 7440–7463, 2021.
+[40] D. Huang, C. Guan, K. K. Ang, H. Zhang, and Y. Pan, “Asymmetric
+spatial pattern for EEG-based emotion detection,” in The 2012 International Joint Conference on Neural Networks (IJCNN). IEEE, 2012, pp.
+1–7.
+[41] K. R. Mickley Steinmetz and E. A. Kensinger, “The effects of valence
+and arousal on the neural activity leading to subsequent memory,”
+Psychophysiology, vol. 46, no. 6, pp. 1190–1199, 2009.
+
+

@@ -28,6 +28,20 @@ RESULTS = os.path.join(os.path.dirname(os.path.dirname(
 AUG = dict(noise=0.05, t_mask=0.1)
 
 
+class DEToGraphSeq(nn.Module):
+    """[B, 310, W] -> [B, W, 62, 5] for graph-sequence models (EmT)."""
+
+    def __init__(self, m, n_ch=62, n_band=5):
+        super().__init__()
+        self.m = m
+        self.n_ch, self.n_band = n_ch, n_band
+
+    def forward(self, x):
+        B, _, W = x.shape
+        g = x.reshape(B, self.n_ch, self.n_band, W)
+        return self.m(g.permute(0, 3, 1, 2))
+
+
 class SqueezeTime(nn.Module):
     """Averages the trailing time dim if the backbone keeps it."""
 
@@ -61,6 +75,20 @@ def build(name, n_classes=3):
     if name == "tsception":
         from src.models.tsception_de import TSceptionDE
         return TSceptionDE(n_classes=n_classes, W=15), 1e-3
+    if name == "emT":
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "third_party", "EmT"))
+        from EmT_Cls import EmT as _EmT
+        return DEToGraphSeq(SqueezeTime(_EmT(
+            num_class=n_classes, num_chan=62, num_feature=5))), 1e-3
+    if name == "mshcl":
+        from src.methods.peer_adapted import MSHCLWrapper
+        return MSHCLWrapper(n_classes=n_classes, W=15), 1e-3
+    if name == "ama-eeg":
+        from src.methods.peer_adapted import AMAEEGWrapper
+        return AMAEEGWrapper(n_classes=n_classes, W=15), 1e-3
     if name == "scde":  # our improved model (registered separately)
         from src.models.de_model import SCDE
         return SCDE(n_classes=n_classes, W=15), 3e-4
@@ -89,7 +117,8 @@ def run_torch_fold(model_name, test_subj, seed=0, epochs=30, batch=256,
     t0 = time.time()
     for ep in range(epochs):
         model.train()
-        for x, y in dl_tr:
+        for batch in dl_tr:
+            x, y = batch[0], batch[1]
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             with torch.autocast("cuda", torch.bfloat16):
                 loss = lossf(model(x), y)
