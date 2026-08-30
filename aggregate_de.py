@@ -5,7 +5,7 @@ Outputs:
   - paper/tables/seed_main.tex  (unified-rerun main table)
   - paper/tables/seed_persub.tex (per-subject balanced accuracy)
 Paper-reported numbers are maintained in PAPER_REPORTED below (no
-fabrication; '未报告' where a paper does not give the metric).
+fabrication; 'n/r' where a paper does not give the metric).
 """
 import glob
 import json
@@ -18,12 +18,12 @@ RES = os.path.join(ROOT, "results_de")
 OUT = os.path.join(ROOT, "paper", "tables")
 
 METHODS = [
-    ("majority", "Majority", "未报告"),
-    ("eegnet-de", "EEGNet (DE)", "未报告"),
-    ("deep4-de", "DeepConvNet (DE)", "未报告"),
-    ("riemannian-mdm", "Riemannian MDM", "未报告"),
-    ("tsception", "TSception (DE adapt.)", "未报告 (DEAP/MAHNOB only)"),
-    ("ppda-zs", "PPDA (zero-shot)", "未报告"),
+    ("majority", "Majority", "n/r"),
+    ("eegnet-de", "EEGNet (DE)", "n/r"),
+    ("deep4-de", "DeepConvNet (DE)", "n/r"),
+    ("riemannian-mdm", "Riemannian MDM", "n/r"),
+    ("tsception", "TSception (DE adapt.)", "n/r (DEAP/MAHNOB only)"),
+    ("ppda-zs", "PPDA (zero-shot)", "n/r"),
     ("ppda-uda", "PPDA (UDA)", "86.7$\\pm$7.1 (Acc)"),
     ("mshcl", "MSHCL (adapt.)", "$\\approx$89.3 (Acc)"),
     ("emT", "EmT (adapt.)", "80.2 (Acc) / 82.1 (F1)"),

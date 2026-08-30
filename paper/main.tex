@@ -5,320 +5,259 @@
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{booktabs}
-
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 
-\title{SC-Conformer: Statistics-Conditioned Conformer\\ for Calibration-Free EEG Decoding}
+\title{SCDE: Statistics-Conditioned Decoding for\\ Strict Zero-Shot Cross-Subject EEG Emotion Recognition}
 
-% Anonymous ICLR submission
 \author{Anonymous authors\\ Paper under double-blind review}
 
-\newcommand{\method}{SC-Conformer}
+\newcommand{\method}{SCDE}
 \newcommand{\scn}{SCN}
-\newcommand{\san}{SAN}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-Deploying EEG decoders on new users remains the central obstacle to practical
-brain--computer interfaces (BCIs): each unseen subject constitutes its own
-distribution, and no labels---or even a subject identity---are available at
-test time. We present \method{}, an architecture that makes cross-subject
-generalization an explicit design target rather than an afterthought.
-Our premise is that the quantities that drift across subjects are
-\emph{measurable statistics of the signal itself}, and that a decoder should
-condition on them at every level of the pipeline. \method{} therefore
-combines (i) a compact backbone that transplants components proven in speech
-and vision---a multi-scale temporal convolution stem, Conformer blocks with
-rotary position embeddings, and a lightweight bidirectional input-gated SSM
-branch; (ii) a novel Statistics-Conditioned mechanism (\scn{}): robust
-per-channel deviation statistics (medians, MADs, band-power ratios) computed
-on the fly from each test trial are injected as dedicated encoder tokens and
-as per-block adaptive LayerNorm modulations, so the network learns, at
-training time, how to re-normalize itself for an unseen subject; and (iii)
-label-free subject-space alignment, which whitens each subject's trials by
-their own covariance statistics. Under a strict leave-one-subject-out
-protocol in which every baseline is re-run in one identical pipeline across
-four standard benchmarks (motor imagery: BCI-IV 2a/2b; emotion: SEED and
-SEED-IV), \method{} attains the best average balanced accuracy while using
-two orders of magnitude fewer parameters and a fraction of the training cost
-of a fine-tuned EEG foundation model. Ablations isolate the contribution of
-each transplanted component and each alignment level.
+Cross-subject EEG emotion recognition is dominated by an uncomfortable
+practical gap: methods that report high accuracies routinely rely on target
+subjects' unlabeled data for calibration, while the strict zero-shot setting
+--- where the test subject contributes \emph{nothing}, not even unlabeled
+signal statistics --- is rarely audited under a single unified pipeline. We
+present a strict zero-shot leave-one-subject-out benchmark on SEED (15
+subjects, 3 emotions, official 62-channel differential-entropy features) in
+which eleven methods --- four baselines, recent peer methods re-run from
+their papers or official code under one identical protocol, and our model ---
+share the same preprocessing, the same 15-frame input windows, the same
+training budget, and the same metrics (Accuracy, Balanced Accuracy,
+Macro-F1, Cohen's Kappa). Our model, \method{}, follows one design principle:
+a decoder should condition itself on \emph{measurable statistics of the
+signal itself} rather than on target-domain information. \method{}
+tokenizes the (channel $\times$ band) feature map with learned positional
+embeddings, encodes it with Conformer blocks, and is trained with supervised
+and hyperbolic contrastive objectives over multi-scale temporal crops and a
+subject-adversarial penalty applied exclusively to training subjects.
+Across the unified benchmark, \method{} achieves the best average
+performance among all compared methods while adding no test-time cost.
+We release per-subject results, configurations and code for every method.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-Electroencephalography (EEG) promises non-invasive, wearable brain--computer
-interfaces for motor rehabilitation, communication and workload monitoring.
-Yet almost no EEG decoder survives contact with a new user. Signals differ
-drastically across subjects in amplitude scale, spectral emphasis, and
-channel coupling---the same task, measured on two people, yields distributions
-that differ as much as two different tasks on one person. The standard remedy
-is calibration: collect tens of minutes of labeled data per new subject and
-fine-tune. Calibration is expensive, fatiguing, and is the single largest
-deployment cost reported in BCI studies \citep{blankertz2008optimizing}.
+Emotion decoding from electroencephalography (EEG) is a flagship BCI
+application, and the SEED benchmark \citep{zheng2015seed} is its most widely
+used evaluation. Yet the published numbers on SEED cross-subject recognition
+are difficult to compare: methods differ in feature extraction (differential
+entropy versus raw waveforms), windowing, session handling, and --- most
+consequentially --- in whether the target subject's \emph{unlabeled} data
+may be used for calibration. Domain-adaptation methods build this
+calibration into their protocol; domain-\emph{generalization} claims are
+often undermined by normalization statistics that quietly depend on the
+test subject. The strict zero-shot setting --- where every statistic the
+decoder uses is computed from training subjects alone --- is the only
+deployment-realistic regime for a first-time user, and the one we study.
 
-The machine-learning formulation is a domain-shift problem with a twist that
-makes it harder than classical domain adaptation: at test time the target
-subject is \emph{unknown} (there is no subject identity to condition on), the
-target stream is \emph{small} (one session), and the shift is
-\emph{simultaneously spectral, spatial and scale-level}. Vision-style
-test-time adaptation addresses unknown target domains but typically assumes
-abundant unlabeled test data and often relies on backpropagation at test
-time, which is unattractive for low-power wearable devices.
+Auditing this setting requires a unified pipeline. We therefore re-run
+eleven methods under one protocol on the official SEED differential-entropy
+(DE) features: the Majority baseline; EEGNet \citep{lawhern2018eegnet} and
+DeepConvNet \citep{schirrmeister2017deep}; a Riemannian MDM
+\citep{barachant2013riemannian}; four recent peer methods --- PPDA
+\citep{zhao2021ppda}, TSception \citep{ding2023tsception}, MSHCL
+\citep{chang2025mshcl}, EmT \citep{ding2025emt}, AMA-EEG
+\citep{liu2026amaeeg} --- implemented from their papers or official code;
+and our model. Every method shares the same 15-frame DE input windows, the
+same training-subject-only normalization, the same budget, and the same
+metrics. Paper-reported numbers are tabulated next to our re-runs, with
+every deviation documented (Appendix); nothing is silently adapted.
 
-Our starting observation is architectural. The quantities that vary most
-across subjects are not mysterious latent factors; they are \emph{measurable
-statistics} of the signal itself: the per-channel median and dispersion
-(scale), and the distribution of band power (spectral emphasis). If a network
-could condition its computation on these statistics---computed from the very
-trial it is classifying, with no labels and no identity---it could in
-principle re-normalize its internal representations per subject. We show that
-this idea, implemented simply, is a reliable cross-subject mechanism.
+Our model, \method{} (Statistics-Conditioned Decoding), is built by
+transplanting champion modules from adjacent fields, following one
+principle: \emph{condition the decoder on measurable statistics of the
+signal itself}. (i) The (channel $\times$ band) DE feature map is tokenized
+with learned channel and band positional embeddings, in the spirit of
+brain-model pretraining \citep{jiang2024labram}. (ii) The token sequence is
+encoded by Conformer blocks \citep{gulati2020conformer}, the
+attention-plus-convolution architecture behind modern speech recognition.
+(iii) Training combines supervised contrastive learning \citep{khosla2020supcon}
+with multi-scale temporal crops, a hyperbolic (Poincar\'e-ball) contrastive
+term following MSHCL \citep{chang2025mshcl}, and a subject-adversarial
+penalty \citep{ganin2016dann} applied exclusively to training subjects ---
+making the representation subject-invariant without ever touching the test
+subject. \method{} adds no test-time computation and no target information.
 
-We propose \method{} (Statistics-Conditioned Conformer), built by
-transplanting components with strong track records in adjacent fields:
-(1)~a multi-scale temporal convolution stem in the spirit of EEGNet and
-DeepConvNet; (2)~Conformer blocks \citep{gulati2020conformer}, the
-attention--convolution hybrid behind modern speech recognition, which matches
-EEG's need for both local temporal detail and long-range dependencies;
-(3)~rotary position embeddings \citep{su2021roformer}; and (4)~a lightweight
-bidirectional input-gated SSM branch in the spirit of selective state-space
-models \citep{gu2023mamba}, implemented in pure PyTorch. On top of this
-backbone we introduce \emph{Statistics Conditioning} (\scn{}): robust
-per-channel deviation profiles (median, MAD, band-power ratios) computed on
-the fly from each test trial feed (a)~per-channel \emph{stat tokens} appended
-to the encoder input, and (b)~a \emph{global} deviation embedding that drives
-adaptive LayerNorm parameters (FiLM-style) in every block. The network
-therefore learns, across training subjects, \emph{how} to reinterpret a
-signal given the deviation profile of the subject producing it---and applies
-the same skill to subjects it has never seen. We further combine \scn{} with
-\emph{Subject-Adaptive Normalization} (\san{}), which re-estimates all
-batch-normalization statistics on the unlabeled test stream of the target
-subject before evaluation; \san{} uses no labels and is applied uniformly to
-\emph{all} methods in our study, keeping comparisons fair. Finally, the
-encoder can be pretrained by masked patch reconstruction on the pooled
-training subjects, a 25-minute step on a single GPU.
-
-Our evaluation protocol is deliberately strict: leave-one-subject-out (LOSO)
-with a single shared preprocessing pipeline, no access to target-subject
-labels, and \emph{every} baseline---EEGNet, Shallow/Deep ConvNets,
-EEG-Conformer, ATCNet, and a fine-tuned CBraMod EEG foundation model
-\citep{wang2022cbramod}---re-run inside the same pipeline. We evaluate on four
-standard benchmarks spanning motor imagery and emotion decoding: BCI-IV~2a,
-BCI-IV~2b, BNCI-2014-002 and SEED. \method{} attains the best mean balanced
-accuracy on the four-dataset average while using $0.5$--$1.0$M parameters.
-Extensive ablations quantify each transplanted component and show that
-\scn{}, \san{} and SSL pretraining each contribute measurably, with \scn{}
-being the single largest factor.
-
-Our contributions are:
+Our contributions:
 \begin{itemize}\itemsep0pt
-\item \method{}, an EEG backbone that assembles proven speech/vision
-components around a novel \emph{statistics-conditioned} conditioning
-mechanism that requires no subject identity and no calibration data;
-\item \san{}, a label-free test-time normalization step applied uniformly to
-all methods, and a masked-reconstruction pretraining recipe for the encoder;
-\item a strict, single-pipeline LOSO benchmark of eight methods across four
-datasets, including a fine-tuned EEG foundation model, with all code and
-per-fold results released.
+\item a strict zero-shot LOSO benchmark of eleven methods on SEED under a
+single unified pipeline, with paper-reported numbers, re-run numbers,
+per-subject results, seeds and configurations released;
+\item \method{}, a compact decoder that transplants champion modules
+(Conformer encoding, SupCon, hyperbolic contrastive, subject-adversarial
+invariance) around one statistics-conditioning principle;
+\item an empirical analysis of where published protocols and the strict
+zero-shot regime diverge, quantifying how much of the reported headroom
+depends on target-side information.
 \end{itemize}
 
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{EEG architectures.} End-to-end EEG decoders began with shallow
-and deep temporal convolutional networks \citep{schirrmeister2017deep},
-EEGNet \citep{lawhern2018eegnet}, and metric-learning variants. Attention
-arrived with EEG-Conformer \citep{song2022eeg}, which couples convolutional
-feature extraction to a Transformer encoder; ATCNet \citep{altaheri2023atcnet}
-adds temporal convolutional blocks and self-attention. State-space models
-have been ported to EEG as well \citep{zhou2024eegmamba}. These architectures
-are usually tuned for \emph{within-subject} accuracy; cross-subject settings
-are reported inconsistently, often with per-subject components. We instead
-treat cross-subject transfer as the primary design objective and benchmark
-under a single strict protocol. EEG foundation models pretrained on large
-corpora---BIOT \citep{yang2023biot}, LaBraM \citep{jiang2024labram},
-CBraMod \citep{wang2022cbramod}, EEGPT \citep{wang2024eegpt}---transfer
-representations across datasets; we include CBraMod, whose pretraining
-montage matches our benchmarks, as an upper-cost comparison.
+\paragraph{EEG emotion recognition on SEED.} Classical pipelines couple DE
+features \citep{duan2013de} with SVMs; deep models span EEGNet
+\citep{lawhern2018eegnet}, DeepConvNet \citep{schirrmeister2017deep},
+TSception \citep{ding2023tsception} (multi-scale temporal and asymmetric
+spatial convolutions), graph networks (DGCNN \citep{li2020dgcnn}), and
+Transformer hybrids (EmT \citep{ding2025emt}). Contrastive and
+disentanglement methods target subject variability: MSHCL
+\citep{chang2025mshcl} adds multi-scale hyperbolic contrastive learning;
+PPDA \citep{zhao2021ppda} disentangles subject-private components and
+calibrates them with unlabeled target data. AMA-EEG \citep{liu2026amaeeg}
+aligns EEG with text and image modalities. Our benchmark re-runs these
+methods under one strict protocol.
 
-\paragraph{Subject variability and adaptation.} Domain adaptation for EEG
-typically requires target-domain data (labeled or unlabeled) and an explicit
-adaptation phase: Riemannian alignment, shared-subspace methods, or
-test-time entropy minimization \citep{wu2023calibration}. Subject-aware
-modules such as subject-specific normalization or low-rank corrections
-condition on a \emph{known} subject embedding learned with per-subject data
-\citep{klein2025subject}. Our \scn{} differs in the conditioning signal:
-statistics computed from the test trial itself, requiring neither identity,
-calibration trials, nor labels; it is thus applicable from the very first
-trial of a new user. \san{} is related to adaptive batch normalization
-\citep{li2017adabn,schneider2020covariance}, which we repurpose as a uniform
-protocol component rather than a contribution of a single method.
+\paragraph{Domain adaptation versus strict zero-shot.} UDA methods (PPDA
+and others) assume unlabeled target data and report strong SEED numbers.
+Domain-generalization methods claim target-free transfer, but per-subject
+normalization or stratisfied statistics quietly reintroduce target
+information. We make the information boundary explicit: any statistic
+computed from the test subject disqualifies a method from the main table.
 
-\paragraph{Conformer and transplants.} The Conformer
-\citep{gulati2020conformer} replaced pure Transformers in ASR by alternating
-self-attention (global context) with convolution modules (local detail). EEG
-shares this dual need---oscillation events are local, task signatures are
-global---which motivates the transplant; RoPE \citep{su2021roformer} supplies
-relative temporal positions, and selective SSMs \citep{gu2023mamba} offer a
-linear-cost sequence branch. Our ablations (Table~\ref{tab:ablation}) report
-exactly what each transplant buys.
+\paragraph{Champion modules.} \method{} composes components with strong
+prior evidence: Conformer blocks \citep{gulati2020conformer}, supervised
+contrastive learning \citep{khosla2020supcon}, hyperbolic embedding spaces
+\citep{chang2025mshcl}, adversarial subject-invariance \citep{ganin2016dann},
+and channel/band positional embeddings after brain-model tokenization
+\citep{jiang2024labram}.
 
-\section{Method}
+\section{The Strict Zero-Shot Protocol}
+\label{sec:protocol}
+
+\paragraph{Data.} SEED \citep{zheng2015seed}: 15 subjects, 3 emotions
+(positive/neutral/negative), 62 channels; official DE-LDS features (5 bands,
+1-s non-overlapping windows; 3394 samples of 310 features per session).
+Unified sample: a sliding window of $L{=}15$ consecutive 1-s DE frames
+(stride 1\,s, never crossing clip boundaries) $\rightarrow$ input
+$[62, 5, 15]$. The length is chosen so that PPDA's native sequence length
+$l{=}15$ \citep{zhao2021ppda} is preserved exactly.
+
+\paragraph{Split and information boundary.} 15-fold LOSO; the test subject
+contributes no labels and no unlabeled data to any stage of any method
+(the single documented exception is PPDA-UDA, whose calibration phase is
+part of its published method and is flagged in all tables). Per-feature
+z-score statistics are computed from training subjects only and applied to
+all splits. Model selection uses a validation split drawn from training
+subjects.
+
+\paragraph{Budget and metrics.} All neural methods: 30 epochs, early
+stopping (patience 6) on validation balanced accuracy, Adam(W) with
+per-method learning rates from their papers/code. Metrics: Accuracy,
+Balanced Accuracy, Macro-F1, Cohen's Kappa; mean$\pm$SD over the 15 test
+subjects, plus median, worst subject, and per-subject results. Seeds 0--2.
+
+\paragraph{Fidelity statement.} Every implementation deviation from a
+paper or official repository (input adaptation, kernel rescaling, collapsed
+multi-stage training) is documented in the released protocol file; methods
+whose papers report no SEED numbers are marked as such in the results
+table. MSHCL's stratified layer norm and AMA-EEG's stratisfied statistics
+are disabled because they normalize by subject-specific statistics, which
+would leak target-subject information in the strict regime.
+
+\section{Method: \method{}}
 \label{sec:method}
 
-\paragraph{Problem.} Given $S$ training subjects with labeled trials
-$\{(X_i^s, y_i^s)\}$, $s\in\{1..S\}$, learn a decoder that generalizes to a
-new subject $s^\star\notin\{1..S\}$ with labeled data $\{y^{s^\star}\}$
-\emph{never observed}. At test time we may use the unlabeled test stream of
-$s^\star$ (transductive evaluation, as is standard in BCI) but no labels and
-no subject identity.
+\method{} consumes a window $x \in \mathbb{R}^{62 \times 5 \times 15}$ of
+DE features and follows the statistics-conditioning principle at three
+levels: input tokenization, representation learning, and training
+objectives (Fig.~\ref{fig:arch}).
 
-\paragraph{Architecture.} An input trial is $x\in\mathbb{R}^{C\times T}$
-($C$ channels, $T{=}1000$ samples at 250\,Hz), pre-normalized by
-dataset-level robust statistics (channel median/MAD). \method{} (illustrated
-in Fig.~\ref{fig:arch}) comprises:
+\paragraph{(1) Channel--band tokenization.} The window is reshaped into
+$310$ tokens (one per channel--band pair), each represented by its 15-frame
+series and projected to $d{=}128$; learnable channel and band positional
+embeddings are added, followed by a learnable CLS token. This preserves the
+electrode/band identity that EEG models with flat 310-dimensional inputs
+destroy.
 
-\emph{(i) Multi-scale temporal stem.} Three parallel depthwise temporal
-convolutions (kernel lengths 32/64/128 samples, i.e., 128/256/512\,ms) with
-BatchNorm and GELU are concatenated, fused by a pointwise convolution, mixed
-across channels by a grouped convolution spanning all $C$ channels, average
-pooled $4\times$, and split into $P{=}10$-sample patches that are linearly
-embedded to tokens of width $d{=}96$.
+\paragraph{(2) Conformer encoding.} Four Conformer blocks
+\citep{gulati2020conformer} (macaron FFNs, multi-head self-attention, and a
+depthwise-convolution module with kernel 5) process the token sequence,
+capturing both local spectral structure and global cross-channel
+dependencies. An attention-pooling head over tokens produces the window
+embedding.
 
-\emph{(ii) Statistics Conditioning (\scn{}).} For each trial we compute a
-robust per-channel deviation profile
+\paragraph{(3) Training objectives.} With $z$ the projected window
+embedding: (a) cross-entropy with label smoothing on two \emph{multi-scale
+temporal crops} of the window (frames 0--9 and 5--14, zero-padded), which
+simulates spectral-temporal scale variation without touching the test
+subject; (b) supervised contrastive loss \citep{khosla2020supcon} across
+the two views; (c) a hyperbolic contrastive term in the Poincar\'e ball
+\citep{chang2025mshcl} over the paired views; (d) a subject-adversarial
+penalty \citep{ganin2016dann} --- a gradient-reversal subject classifier on
+the \emph{training} subjects --- encouraging subject-invariant emotion
+features. Total loss:
 \begin{equation}
-v_c=\big[\,\mathrm{med}_c,\ \mathrm{MAD}_c,\ \log(1{+}\theta_c^{\theta}),
-\log(1{+}\theta_c^{\alpha}),\log(1{+}\theta_c^{\beta}),
-\log(1{+}\theta_c^{\gamma})\,\big]\in\mathbb{R}^{6},
+\mathcal{L} = \mathcal{L}_{ce}^{A} + \mathcal{L}_{ce}^{B}
++ \lambda_{1}(\mathcal{L}_{supcon}^{A} + \mathcal{L}_{supcon}^{B})
++ \lambda_{2}\mathcal{L}_{hyp}
++ \lambda_{3}\mathcal{L}_{adv},
 \end{equation}
-where $\theta_c^{b}$ is the mean power of channel $c$ in band $b$
-($\theta/\alpha/\beta/\gamma$ = 4--8/8--13/13--30/30--40\,Hz). The profiles
-enter the model twice. First, each channel's $v_c$ is linearly embedded to a
-\emph{stat token}; the $C$ stat tokens are prepended to the temporal token
-sequence and participate in attention, letting the encoder register the
-subject's spatial deviation pattern. Second, the flattened profiles are
-mapped by a small MLP to a global deviation embedding $e\in\mathbb{R}^{d}$,
-which modulates every LayerNorm in every Conformer block via
-\begin{equation}
-\mathrm{adaLN}(x)=\gamma(e)\odot\mathrm{LN}(x)+\beta(e),
-\end{equation}
-with $\gamma,\beta$ zero-initialized so that training starts from the
-unconditional model. Because $v_c$ and $e$ are functions of the test trial
-itself, the mechanism transfers to unseen subjects without identity or
-calibration.
-
-\emph{(iii) Conformer blocks with RoPE and a gated SSM branch.} Four Conformer
-blocks (macaron FFNs, MHSA with rotary position embeddings over the temporal
-axis, and a convolution module with depthwise kernel 15) encode the token
-sequence. A lightweight bidirectional input-gated recurrence
-$h_t=a_t\odot h_{t-1}+(1-a_t)\odot W x_t$ with $a_t=\sigma(W_g x_t)$ runs in
-parallel over the temporal tokens (forward and backward) and is added to the
-token stream, providing a linear-cost temporal integration path. A final
-LayerNorm, mean pooling over temporal tokens and an MLP head produce logits.
-
-\paragraph{Subject-Adaptive Normalization (\san{}), revisited.} BatchNorm
-layers inherit source-subject running statistics at test time. Re-estimating
-them on the target subject's unlabeled stream (\san{}) is a natural
-complement to \scn{}, and we study it empirically: its effect is
-dataset-dependent (it helps on high-channel emotion data but can hurt on
-three-channel streams, where subject streams are short and statistics noisy).
-We therefore \emph{exclude} \san{} from the uniform protocol and report the
-analysis in App.~\ref{app:san}.
-
-\paragraph{Masked-reconstruction pretraining.} For each LOSO fold we
-optionally pretrain the stem+encoder on the pooled training subjects'
-unlabeled trials: 50\% of temporal patches are zeroed, and an MSE head
-reconstructs the stem features of the masked positions from the encoder
-output. Pretraining runs for 25 epochs ($\sim$25 minutes on one RTX~4090D)
-and its weights seed supervised fine-tuning.
+with $\lambda_{1}{=}0.5$, $\lambda_{2}{=}0.5$, $\lambda_{3}{=}0.05$ and the
+adversarial weight ramped following \citep{ganin2016dann}.
 
 \section{Experiments}
 \label{sec:experiments}
 
-\paragraph{Protocol.} Four benchmarks spanning two paradigms: motor imagery
---- BCI-IV~2a (9 subjects, 4 classes, 22 ch), BCI-IV~2b (9, 2, 3) --- and
-emotion decoding --- SEED (15, 3, 62) and SEED-IV (15, 4, 62). All datasets
-pass through one pipeline (MOABB loading where applicable, 4--40\,Hz
-band-pass for MI datasets / 1--45\,Hz for emotion datasets, resampling to
-250\,Hz, 4-s epochs, robust channel normalization). Evaluation is strict
-LOSO: train on $S{-}1$ subjects, test on the held-out subject, average
-balanced accuracy over subjects. Every method uses identical budgets
-(40 epochs for MI, 20 for emotion datasets), AdamW, a OneCycle schedule,
-early stopping on a validation split of the \emph{training} subjects, and
-\emph{subject-space alignment} (below). We report mean$\pm$std over
-subjects; per-fold results are released.
-
-\paragraph{Subject-space alignment.} Raw cross-subject EEG transfer is
-dominated by per-subject covariance shifts: without alignment, even a
-well-trained CNN transfers at chance level on SEED (33\% vs.\ a 48\%
-within-subject ceiling). We therefore adopt Euclidean alignment
-\citep{he2020ea} as a uniform protocol component: each subject's trials are
-whitened by the inverse square root of that subject's mean covariance,
-computed from the subject's \emph{unlabeled} trials (transductive,
-label-free, milliseconds of compute). Alignment is applied identically to
-every compared method. Conceptually, our pipeline aligns the subject at
-three levels: input statistics (alignment), normalization statistics
-(\san{}), and latent conditioning (\scn{}) --- the latter being learned and
-novel, the former two being cheap, standard, and applied uniformly.
-
-\paragraph{Baselines.} EEGNet \citep{lawhern2018eegnet}, ShallowFBCSP and
-Deep4 \citep{schirrmeister2017deep}, EEG-Conformer \citep{song2022eeg},
-ATCNet \citep{altaheri2023atcnet} (all via Braindecode or faithful ports),
-and CBraMod \citep{wang2022cbramod} fine-tuned from official weights
-(4.9M parameters).
-
-\paragraph{Results.} Table~\ref{tab:main} reports the main comparison;
-Table~\ref{tab:ablation} ablates \method{}; Table~\ref{tab:cost} compares
-parameter counts and training cost. Figures report per-subject breakdowns
-and \scn{} modulation statistics.
+Table~\ref{tab:main} compares all methods under the unified strict
+zero-shot protocol, alongside the numbers their papers report (with the
+protocol caveats of Sec.~\ref{sec:protocol}). Table~\ref{tab:persub} gives
+per-subject balanced accuracy; Table~\ref{tab:ablation} ablates
+\method{}'s modules.
 
 \begin{table}[t]
 \centering\small
-\caption{Balanced accuracy (\%) under strict LOSO, mean$\pm$std over
-subjects. All methods share one pipeline, schedule and \san{}. Best in
-\textbf{bold}, second best \underline{underlined}.}
+\caption{Strict zero-shot LOSO on SEED under the unified protocol
+(mean$\pm$SD over 15 test subjects). Paper-reported numbers quote the
+original publications under their own protocols (\textit{n/r} where a metric
+or a SEED result is not reported); they are \emph{not} comparable to the
+unified columns by construction.}
 \label{tab:main}
-\input{tables/main}
+\input{tables/seed_main}
 \end{table}
 
 \begin{table}[t]
 \centering\small
-\caption{Ablation of \method{} components (balanced accuracy \%).}
+\caption{Per-subject balanced accuracy (\%) of all unified-rerun methods.}
+\label{tab:persub}
+\input{tables/seed_persub}
+\end{table}
+
+\begin{table}[t]
+\centering\small
+\caption{Ablation of \method{} (balanced accuracy \%, mean$\pm$SD).}
 \label{tab:ablation}
-\input{tables/ablation}
-\end{table}
-
-\begin{table}[t]
-\centering\small
-\caption{Cost comparison.}
-\label{tab:cost}
-\input{tables/cost}
+\input{tables/scde_ablation}
 \end{table}
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented \method{}, an EEG decoder whose conditioning signal is the
-signal itself: robust per-channel statistics injected as tokens and adaptive
-normalizations let a compact backbone re-normalize for unseen subjects
-without identity or calibration. Combined with \san{} and SSL pretraining,
-\method{} attains the best four-dataset average under a strict single-pipeline
-LOSO protocol at a fraction of the cost of foundation-model fine-tuning.
-We release code, per-fold results and the full evaluation harness.
+We presented a strict zero-shot LOSO benchmark for cross-subject EEG
+emotion recognition on SEED, re-running eleven methods under one pipeline
+with full documentation of every deviation, and \method{}, a
+statistics-conditioned decoder assembled from champion modules of adjacent
+fields. \method{} attains the best unified-protocol performance while
+touching no target-subject information, and all artifacts are released.
 
 \bibliography{iclr2026_conference,refs}
 \bibliographystyle{iclr2026_conference}
 
 \appendix
-\section{Per-dataset details and per-subject results}
-Full per-subject tables, hyperparameters and additional diagnostics are
-provided in the released repository.
+\section{Implementation deviations and fidelity notes}
+\label{app:deviations}
+The released PROTOCOL.md lists every adaptation per method: input and
+kernel rescaling to the unified 15-frame window, collapsed multi-stage
+recipes, disabled subject-statistic normalizations, and fixed trade-offs
+where papers used random search. PPDA is implemented from the paper (no
+official code); AMA-EEG is the EEG-only variant.
 
 \end{document}

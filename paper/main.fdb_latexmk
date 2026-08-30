@@ -1,13 +1,13 @@
 # Fdb version 3
-["bibtex main"] 1788044667 "main.aux" "main.bbl" "main" 1788044668
+["bibtex main"] 1788066399 "main.aux" "main.bbl" "main" 1788066399
   "./iclr2026_conference.bst" 1750881547 26973 af983813ca1a1414954dbceae7baa2a1 ""
   "iclr2026_conference.bib" 1750881547 629 874ad2cd193ec8e65abcd05eea606aaf ""
-  "main.aux" 1788044668 6329 1da7e1054a954d1b193b5969db4ac93f "pdflatex"
-  "refs.bib" 1788040508 5675 65a4536c1082fae08b0c1688cd0a5d6a ""
+  "main.aux" 1788066399 6588 a13d988ab6ba27a3fe87d5ba2942136f "pdflatex"
+  "refs.bib" 1788066377 8032 797fb6ba03af9b0b8d8468f0b61bdeed ""
   (generated)
   "main.bbl"
   "main.blg"
-["pdflatex"] 1788044667 "main.tex" "main.pdf" "main" 1788044668
+["pdflatex"] 1788066399 "main.tex" "main.pdf" "main" 1788066399
   "/etc/texmf/web2c/texmf.cnf" 1787145189 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/adobe/helvetic/phvb.tfm" 1136768653 2300 14616918391efa49ac8b481a75fbdc1a ""
@@ -49,9 +49,7 @@
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr9.tfm" 1136768653 1292 6b21b9c2c7bebb38aa2273f7ca0fb3af ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmsy6.tfm" 1136768653 1116 933a60c408fc0a863a92debe84b2d294 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmsy9.tfm" 1136768653 1116 25a7bf822c58caf309a702ef79f4afbb ""
-  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb" 1248133631 30251 6afa5cb1d0204815a708a080681d4674 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb" 1248133631 36299 5f9df58c2139e7edcf37c8fca4bd384d ""
-  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb" 1248133631 37912 77d683123f92148345f3fc36a38d9ab1 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb" 1248133631 36281 c355509802a035cadc5f15869451dcee ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1248133631 35752 024fb6c41858982481f6968b5fc26508 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb" 1248133631 32762 224316ccc9ad3ca0423a14971cfa7fc1 ""
@@ -134,15 +132,15 @@
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1787145199 1405646 f5a606b66142d35c215349545dfce2cf ""
   "fancyhdr.sty" 1750881547 20521 e5d13d98d57bd53d4fed3aa61bd29c86 ""
   "iclr2026_conference.sty" 1750881810 9025 a040392a6cfee8dc54aae17eb2635282 ""
-  "main.aux" 1788044668 6329 1da7e1054a954d1b193b5969db4ac93f "pdflatex"
-  "main.bbl" 1788044667 6492 ef1528c01107118feced9aba1c64b000 "bibtex main"
-  "main.out" 1788044668 744 cb71edb3985163b87c63551a2af7aa1d "pdflatex"
-  "main.tex" 1788044634 17403 198a1461c2fed2a939f2f3a24cf126c6 ""
+  "main.aux" 1788066399 6588 a13d988ab6ba27a3fe87d5ba2942136f "pdflatex"
+  "main.bbl" 1788066399 4524 644c55ead273368cbf005d3e27292211 "bibtex main"
+  "main.out" 1788066399 979 bf87d5ba2b511c26fdd9caa7a1479f4c "pdflatex"
+  "main.tex" 1788066397 13102 1a729c5471f4b4bc47f452b7d6893f01 ""
   "math_commands.tex" 1750881547 12284 a71653715108dc62b66e3a0bde0307d8 ""
   "natbib.sty" 1750881547 45154 40088ce024445d7ee2bca59e704cdd01 ""
-  "tables/ablation.tex" 1788044666 549 4103f665a9f0ea3f215d4523c0a75cf3 ""
-  "tables/cost.tex" 1788044666 486 717a2aeb0de5e801b530580d511a7de2 ""
-  "tables/main.tex" 1788044666 828 10b6138ef459e2a2ea7b123ee8767d06 ""
+  "tables/scde_ablation.tex" 1788066377 100 248e00d75fa6790214b920cdcbb3c766 ""
+  "tables/seed_main.tex" 1788066397 425 824402c32c4fcb7838a402dfb254bf60 ""
+  "tables/seed_persub.tex" 1788066397 567 0addf8b3ab43b1ffe262aa899f492f3e ""
   (generated)
   "main.aux"
   "main.log"
