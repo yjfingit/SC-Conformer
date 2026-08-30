@@ -1,0 +1,13 @@
+{
+ "dataset": "seed",
+ "model": "conformer",
+ "test_subject": 9,
+ "seed": 0,
+ "n_params": 853539,
+ "train_time": 347.78105998039246,
+ "epochs_run": 20,
+ "val_bacc": 0.5475138953188257,
+ "acc": 0.48812351543942994,
+ "bacc": 0.4808225908575933,
+ "kappa": 0.2254334190871737
+}

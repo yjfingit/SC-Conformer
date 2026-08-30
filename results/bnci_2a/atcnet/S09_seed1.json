@@ -1,0 +1,13 @@
+{
+ "dataset": "bnci_2a",
+ "model": "atcnet",
+ "test_subject": 9,
+ "seed": 1,
+ "n_params": 99348,
+ "train_time": 31.685616493225098,
+ "epochs_run": 15,
+ "val_bacc": 0.3386627906976744,
+ "acc": 0.4704861111111111,
+ "bacc": 0.4704861111111111,
+ "kappa": 0.2939814814810895
+}

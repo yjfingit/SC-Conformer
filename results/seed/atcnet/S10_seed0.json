@@ -1,0 +1,13 @@
+{
+ "dataset": "seed",
+ "model": "atcnet",
+ "test_subject": 10,
+ "seed": 0,
+ "n_params": 100563,
+ "train_time": 366.85423016548157,
+ "epochs_run": 20,
+ "val_bacc": 0.5824548132600839,
+ "acc": 0.552652414885194,
+ "bacc": 0.5495130097784345,
+ "kappa": 0.3281124214386712
+}

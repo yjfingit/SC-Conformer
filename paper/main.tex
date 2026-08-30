@@ -223,14 +223,14 @@ parallel over the temporal tokens (forward and backward) and is added to the
 token stream, providing a linear-cost temporal integration path. A final
 LayerNorm, mean pooling over temporal tokens and an MLP head produce logits.
 
-\paragraph{Subject-Adaptive Normalization (\san{}).} All compared models use
-BatchNorm in their stems. Cross-subject deployment inherits source-subject
-running statistics, which mismatch the target. Before evaluating any model
-we re-estimate every BN layer's running statistics on the target subject's
-\emph{unlabeled} test stream (two forward passes, cumulative averaging), then
-evaluate. \san{} uses no labels, is applied identically to every method, and
-costs milliseconds; it should be viewed as part of the evaluation protocol
-for calibration-free deployment rather than a method-specific trick.
+\paragraph{Subject-Adaptive Normalization (\san{}), revisited.} BatchNorm
+layers inherit source-subject running statistics at test time. Re-estimating
+them on the target subject's unlabeled stream (\san{}) is a natural
+complement to \scn{}, and we study it empirically: its effect is
+dataset-dependent (it helps on high-channel emotion data but can hurt on
+three-channel streams, where subject streams are short and statistics noisy).
+We therefore \emph{exclude} \san{} from the uniform protocol and report the
+analysis in App.~\ref{app:san}.
 
 \paragraph{Masked-reconstruction pretraining.} For each LOSO fold we
 optionally pretrain the stem+encoder on the pooled training subjects'

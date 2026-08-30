@@ -1,0 +1,11 @@
+{
+ "acc": 0.4350552403702598,
+ "bacc": 0.43746586812540467,
+ "f1": 0.4336467698457897,
+ "kappa": 0.15788790051652168,
+ "model": "ppda-zs",
+ "test_subject": 1,
+ "seed": 0,
+ "train_time": 235.49487137794495,
+ "note": "reimplementation from published description; no official code"
+}
